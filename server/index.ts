@@ -370,7 +370,7 @@ app.post('/api/auth/register', async (req, res) => {
     // Send Welcome Email with Verification Code
     try {
       if (process.env.RESEND_API_KEY) {
-        await resendClient.emails.send({
+        const emailResult = await resendClient.emails.send({
           from: `MyAsset Security <${getEmailSender()}>`,
           to: email,
           subject: 'Verify Your MyAsset Account',
@@ -388,7 +388,9 @@ app.post('/api/auth/register', async (req, res) => {
                   <p>Enter this code in the application to activate your account.</p>
                 </div>`
         });
-        console.log('Verification email sent to:', email);
+        // @ts-ignore
+        if (emailResult?.error) console.error('RESEND ERROR:', emailResult.error);
+        else console.log('Verification email sent to:', email);
       }
     } catch (emailErr) {
       console.error('Welcome email failed:', emailErr);
