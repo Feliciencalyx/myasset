@@ -43,7 +43,7 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 20 * 1024 * 1024) { // 20MB limit
-        setError("Image size must be less than 20MB");
+        setError(t('imageSizeLimit'));
         return;
       }
 

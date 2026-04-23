@@ -84,45 +84,57 @@ export function EstateProvider({ children }: { children: ReactNode }) {
   const fetchAssets = async () => {
     if (!user) return;
     try {
-      setLoading(true);
+      // Try to load from cache first for instant UI
+      const cached = sessionStorage.getItem(`assets_${user.id}`);
+      if (cached && loading) {
+        const { land, res, veh } = JSON.parse(cached);
+        updateStates(land, res, veh);
+        setLoading(false);
+      }
+
       const [land, res, veh] = await Promise.all([
         fetch(`${API_BASE}/api/assets/land`, { credentials: 'include' }).then(r => r.json()),
         fetch(`${API_BASE}/api/assets/residential`, { credentials: 'include' }).then(r => r.json()),
         fetch(`${API_BASE}/api/assets/vehicles`, { credentials: 'include' }).then(r => r.json())
       ]);
 
-      setLandAssets(land.map((a: any) => {
-        const expiry = new Date(a.EXPIRY_DATE);
-        const now = new Date();
-        const diff = Math.max(0, expiry.getFullYear() - now.getFullYear());
-        
-        return {
-          id: a.ID, upi: a.UPI, title: a.TITLE, address: a.ADDRESS,
-          zoning: a.ZONING, masterPlan: a.MASTER_PLAN, size: a.SIZE_HA,
-          purchaseDate: a.PURCHASE_DATE, expiryDate: a.EXPIRY_DATE,
-          status: a.STATUS, valuation: a.VALUATION || '0',
-          location: { lat: Number(a.LAT), lng: Number(a.LNG) },
-          remainingYears: diff
-        };
-      }));
-
-      setResidentialAssets(res.map((a: any) => ({
-        id: a.ID, name: a.NAME, location: a.LOCATION, status: a.STATUS,
-        tenant: a.TENANT, leaseStart: a.LEASE_START, leaseEnd: a.LEASE_END,
-        monthlyRent: a.MONTHLY_RENT, valuation: a.VALUATION || '0', appreciation: a.APPRECIATION, img: a.IMG_URL,
-        linkedUPI: a.LINKED_UPI
-      })));
-
-      setVehicleFleet(veh.map((v: any) => ({
-        id: v.ID, model: v.MODEL, reg: v.REG, insuranceExpiry: v.INSURANCE_EXPIRY,
-        status: v.STATUS, owner: v.OWNER, location: v.LOCATION,
-        lastService: v.LAST_SERVICE, img: v.IMG_URL
-      })));
+      updateStates(land, res, veh);
+      sessionStorage.setItem(`assets_${user.id}`, JSON.stringify({ land, res, veh }));
     } catch (err) {
       console.error('Fetch failed:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateStates = (land: any[], res: any[], veh: any[]) => {
+    setLandAssets(land.map((a: any) => {
+      const expiry = new Date(a.EXPIRY_DATE);
+      const now = new Date();
+      const diff = Math.max(0, expiry.getFullYear() - now.getFullYear());
+      
+      return {
+        id: a.ID, upi: a.UPI, title: a.TITLE, address: a.ADDRESS,
+        zoning: a.ZONING, masterPlan: a.MASTER_PLAN, size: a.SIZE_HA,
+        purchaseDate: a.PURCHASE_DATE, expiryDate: a.EXPIRY_DATE,
+        status: a.STATUS, valuation: a.VALUATION || '0',
+        location: { lat: Number(a.LAT), lng: Number(a.LNG) },
+        remainingYears: diff
+      };
+    }));
+
+    setResidentialAssets(res.map((a: any) => ({
+      id: a.ID, name: a.NAME, location: a.LOCATION, status: a.STATUS,
+      tenant: a.TENANT, leaseStart: a.LEASE_START, leaseEnd: a.LEASE_END,
+      monthlyRent: a.MONTHLY_RENT, valuation: a.VALUATION || '0', appreciation: a.APPRECIATION, img: a.IMG_URL,
+      linkedUPI: a.LINKED_UPI
+    })));
+
+    setVehicleFleet(veh.map((v: any) => ({
+      id: v.ID, model: v.MODEL, reg: v.REG, insuranceExpiry: v.INSURANCE_EXPIRY,
+      status: v.STATUS, owner: v.OWNER, location: v.LOCATION,
+      lastService: v.LAST_SERVICE, img: v.IMG_URL
+    })));
   };
 
   useEffect(() => {

@@ -26,11 +26,12 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, setActiveTab, onQuickAdd, isOpen, onClose }: SidebarProps) {
   const { t } = useLanguage();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const adminName = user?.fullName?.split(' ')[0] || 'Family';
   
   const navItems = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
-    { id: 'family', label: t('family'), icon: Users },
+    { id: 'family', label: t('family', { adminName }), icon: Users },
     { id: 'assets', label: t('assets'), icon: Map },
     { id: 'residential', label: t('residential'), icon: Home },
     { id: 'vehicles', label: t('vehicles'), icon: Car },

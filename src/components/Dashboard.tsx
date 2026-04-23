@@ -34,10 +34,10 @@ export default function Dashboard() {
   const latestAsset = landAssets.length > 0 ? landAssets[0] : null;
 
   const metricCards = [
-    { label: t('consolidatedValue'), value: totalConsolidatedValue, sub: '+12.4% vs 2025', icon: ShieldCheck, color: 'primary', tab: 'dashboard' },
-    { label: t('landAssets'), value: totalLandHA, sub: `across ${landAssets.length} Registered Plots`, icon: MapPin, color: 'tertiary', tab: 'assets' },
-    { label: t('residentialUnits'), value: residentialCount, sub: `${occYield}% Occupancy Yield`, icon: Building, color: 'primary', tab: 'residential' },
-    { label: t('vehicles'), value: vehicleCount, sub: 'Fully Insured/Tracked', icon: Car, color: 'surface', tab: 'vehicles' },
+    { label: t('consolidatedValue'), value: totalConsolidatedValue, sub: t('valuationTrend'), icon: ShieldCheck, color: 'primary', tab: 'dashboard' },
+    { label: t('landAssets'), value: totalLandHA, sub: t('registeredPlotsCount', { count: landAssets.length.toString() }), icon: MapPin, color: 'tertiary', tab: 'assets' },
+    { label: t('residentialUnits'), value: residentialCount, sub: t('occupancyYield', { yield: occYield.toString() }), icon: Building, color: 'primary', tab: 'residential' },
+    { label: t('vehicles'), value: vehicleCount, sub: t('insuredTracked'), icon: Car, color: 'surface', tab: 'vehicles' },
   ];
 
   return (
@@ -109,13 +109,13 @@ export default function Dashboard() {
             
             <div className="absolute inset-0 p-10 flex flex-col justify-between pointer-events-none">
               <div className="flex justify-end gap-3 pointer-events-auto">
-                 <button onClick={() => setActiveTab('assets')} className="bg-surface-container-lowest/90 backdrop-blur px-6 py-3 rounded-2xl text-[10px] font-black text-primary uppercase tracking-widest border border-outline-variant/20 shadow-xl">Master Plan Sync</button>
-                 <button onClick={() => setActiveTab('assets')} className="bg-primary/90 backdrop-blur px-6 py-3 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl">UPI Layer</button>
+                 <button onClick={() => setActiveTab('assets')} className="bg-surface-container-lowest/90 backdrop-blur px-6 py-3 rounded-2xl text-[10px] font-black text-primary uppercase tracking-widest border border-outline-variant/20 shadow-xl">{t('masterPlanSync')}</button>
+                 <button onClick={() => setActiveTab('assets')} className="bg-primary/90 backdrop-blur px-6 py-3 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl">{t('upiLayer')}</button>
               </div>
               
               {latestAsset ? (
                 <div className="glass-panel p-8 rounded-[2rem] border border-white/20 shadow-2xl max-w-sm pointer-events-auto group/hero">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-3">LAST REGISTERED PLOT</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-3">{t('lastRegisteredPlot')}</p>
                   <h4 className="text-3xl font-black text-primary font-headline tracking-tighter">{latestAsset.title}</h4>
                   <p className="text-xs text-on-surface-variant font-medium leading-relaxed mt-2">{latestAsset.address}</p>
                   <div className="mt-6 flex gap-4">
@@ -125,7 +125,7 @@ export default function Dashboard() {
                     </div>
                     <div className="w-[1px] bg-outline-variant/30"></div>
                     <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-primary/40 uppercase">Valuation</span>
+                      <span className="text-[9px] font-black text-primary/40 uppercase">{t('valuation')}</span>
                       <span className="text-xs font-bold text-primary">{formatCurrency(Number(latestAsset.valuation?.replace(/[^0-9.-]+/g,"") || 0))}</span>
                     </div>
                   </div>
@@ -136,14 +136,14 @@ export default function Dashboard() {
                     }}
                     className="w-full mt-6 bg-primary text-white py-4 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg"
                   >
-                    View in Registry <ArrowRight size={14} />
+                    {t('viewInRegistry')} <ArrowRight size={14} />
                   </button>
                 </div>
               ) : (
                 <div className="glass-panel p-8 rounded-[2rem] border border-white/20 shadow-2xl max-w-sm pointer-events-auto">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-3">WELCOME TO REGISTRY</p>
-                  <h4 className="text-3xl font-black text-primary font-headline tracking-tighter">No Assets Recorded</h4>
-                  <p className="text-xs text-on-surface-variant font-medium leading-relaxed mt-2">Start documenting your legacy by adding your first land parcel in the Land Registry.</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-3">{t('welcome')}</p>
+                  <h4 className="text-3xl font-black text-primary font-headline tracking-tighter">{t('noAssetsRecorded')}</h4>
+                  <p className="text-xs text-on-surface-variant font-medium leading-relaxed mt-2">{t('startDocumenting')}</p>
                 </div>
               )}
             </div>
@@ -167,7 +167,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-6">
-                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] px-2 mb-4">LATEST REGISTRY ACTIVITY</p>
+                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] px-2 mb-4">{t('latestRegistryActivity')}</p>
                 {landAssets.slice(0, 3).map((asset, idx) => (
                   <div 
                     key={idx} 
@@ -188,7 +188,7 @@ export default function Dashboard() {
                   </div>
                 ))}
                 {landAssets.length === 0 && (
-                  <p className="text-[10px] text-outline font-bold text-center py-4">Waiting for first registry entry...</p>
+                  <p className="text-[10px] text-outline font-bold text-center py-4">{t('waitingForFirstEntry')}</p>
                 )}
               </div>
 

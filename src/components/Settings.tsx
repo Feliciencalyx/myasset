@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Settings() {
   const [notifications, setNotifications] = useState(true);

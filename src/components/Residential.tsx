@@ -85,7 +85,7 @@ export default function Residential() {
             onClick={() => { resetForm(); setShowRegisterModal(true); }}
             className="bg-primary text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:opacity-90 transition-all shadow-xl"
           >
-            <Plus size={18} /> Add New Property
+            <Plus size={18} /> {t('addNewAsset')}
           </button>
         )}
       </header>
@@ -94,8 +94,8 @@ export default function Residential() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {[
           { label: t('occupancyRate'), value: `${residentialAssets.length ? Math.round((residentialAssets.filter(a => a.status === 'RENTED').length / residentialAssets.length) * 100) : 0}%`, sub: `${residentialAssets.filter(a => a.status === 'RENTED').length} Houses Rented`, icon: UserCheck, color: 'primary' },
-          { label: 'Market Capitalization', value: formatCurrency(residentialAssets.reduce((sum, item) => sum + Number(item.valuation?.replace(/[^0-9.-]+/g,"") || 0), 0)), sub: 'Total Portfolio Value', icon: TrendingUp, color: 'tertiary' },
-          { label: t('maintenanceHub'), value: '02', sub: 'Open Service Tickets', icon: Building2, color: 'outline' },
+          { label: t('marketCapitalization'), value: formatCurrency(residentialAssets.reduce((sum, item) => sum + Number(item.valuation?.replace(/[^0-9.-]+/g,"") || 0), 0)), sub: t('totalPortfolioValue'), icon: TrendingUp, color: 'tertiary' },
+          { label: t('maintenanceHub'), value: '02', sub: t('openServiceTickets'), icon: Building2, color: 'outline' },
         ].map((item, i) => (
           <div key={i} className="p-10 rounded-[2.5rem] bg-surface-container-lowest border border-outline-variant/10 shadow-sm flex flex-col justify-between h-56 group hover:shadow-xl transition-all">
             <div className="w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
@@ -149,7 +149,7 @@ export default function Residential() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-black text-primary font-headline">{formatCurrency(Number(asset.valuation?.replace(/[^0-9.-]+/g,"") || 0))}</p>
-                  <p className="text-[10px] text-outline font-bold uppercase tracking-tighter">Market Asset Value</p>
+                  <p className="text-[10px] text-outline font-bold uppercase tracking-tighter">{t('marketAssetValue')}</p>
                 </div>
               </div>
 
@@ -157,7 +157,7 @@ export default function Residential() {
                 <div className="p-6 bg-surface-container-low rounded-3xl space-y-4">
                   <div className="flex items-center gap-2 text-primary">
                     <UserCheck size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Active Tenant</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{t('activeTenant')}</span>
                   </div>
                   {asset.tenant ? (
                     <div>
@@ -176,10 +176,10 @@ export default function Residential() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <button className="text-[10px] font-bold text-primary flex items-center justify-between group/doc hover:underline">
-                      Rental Agreement <ArrowUpRight size={12} className="group-hover/doc:translate-y-[-1px] group-hover/doc:translate-x-[1px] transition-transform" />
+                      {t('rentalAgreement')} <ArrowUpRight size={12} className="group-hover/doc:translate-y-[-1px] group-hover/doc:translate-x-[1px] transition-transform" />
                     </button>
                     <button className="text-[10px] font-bold text-primary flex items-center justify-between group/doc hover:underline">
-                       Maintenance Log <ArrowUpRight size={12} className="group-hover/doc:translate-y-[-1px] group-hover/doc:translate-x-[1px] transition-transform" />
+                       {t('maintenanceLog')} <ArrowUpRight size={12} className="group-hover/doc:translate-y-[-1px] group-hover/doc:translate-x-[1px] transition-transform" />
                     </button>
                   </div>
                 </div>
@@ -200,7 +200,7 @@ export default function Residential() {
                       onClick={() => goToPlot(asset.linkedUPI!)}
                       className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
                     >
-                      Land Context <MapPin size={10} />
+                      {t('landContext')} <MapPin size={10} />
                     </button>
                    )}
                   {isAdmin && (
@@ -234,15 +234,15 @@ export default function Residential() {
             >
               <div className="flex justify-between items-start mb-8">
                 <div>
-                  <h3 className="text-3xl font-black text-primary font-headline tracking-tighter">Add Residential Property</h3>
-                  <p className="text-xs text-outline font-bold uppercase tracking-widest mt-1">Estate Portfolio Expansion</p>
+                  <h3 className="text-3xl font-black text-primary font-headline tracking-tighter">{t('addResidentialProperty')}</h3>
+                  <p className="text-xs text-outline font-bold uppercase tracking-widest mt-1">{t('estatePortfolioExpansion')}</p>
                 </div>
                 <button onClick={() => setShowRegisterModal(false)} className="text-outline hover:text-primary transition-colors text-2xl font-black p-2">×</button>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">Property Name</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">{t('propertyName')}</label>
                   <input 
                     type="text" 
                     placeholder="e.g., The Horizon Villa" 
@@ -254,20 +254,20 @@ export default function Residential() {
 
                 <div className="grid grid-cols-2 gap-6">
                    <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">Link to Land Plot (UPI)</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">{t('linkToLandPlot')}</label>
                     <select 
                       value={selectedUPI}
                       onChange={(e) => setSelectedUPI(e.target.value)}
                       className="w-full bg-surface-container-low border-b-2 border-outline-variant focus:border-tertiary focus:ring-0 p-4 font-headline font-bold text-primary transition-all outline-none"
                     >
-                      <option value="">No Link</option>
+                      <option value="">{t('noLink')}</option>
                       {landAssets.map(a => (
                         <option key={a.id} value={a.upi}>{a.title} ({a.upi})</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">Geographic Location</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">{t('geographicLocation')}</label>
                     <input 
                       type="text" 
                       placeholder="e.g., Kicukiro, Kigali" 
@@ -280,7 +280,7 @@ export default function Residential() {
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">Current Status</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">{t('currentStatus')}</label>
                     <select 
                       value={statusInput}
                       onChange={(e) => setStatusInput(e.target.value)}
@@ -292,7 +292,7 @@ export default function Residential() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">Market Appreciation Value ({currency})</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">{t('marketAppreciationValue')} ({currency})</label>
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40"><DollarSign size={16} /></div>
                       <input 
@@ -308,7 +308,7 @@ export default function Residential() {
 
                 <div className="grid grid-cols-1 gap-6">
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">Monthly Yield (Rent/Lease {currency})</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline px-1">{t('monthlyYieldRent')} ({currency})</label>
                       <input 
                         type="number" 
                         placeholder={`e.g., ${currency === 'RWF' ? '3000000' : '2500'}`} 

@@ -1,15 +1,6 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
-import Dashboard from './components/Dashboard';
-import Vault from './components/Vault';
-import Family from './components/Family';
-import Assets from './components/Assets';
-import Residential from './components/Residential';
-import Vehicles from './components/Vehicles';
-import Schema from './components/Schema';
-import Profile from './components/Profile';
-import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { Map, Home, Car } from 'lucide-react';
 
@@ -17,7 +8,18 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { EstateProvider, useEstate } from './context/EstateContext';
 import AuthScreens from './components/auth/AuthScreens';
 import { ThemeProvider } from './context/ThemeContext';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+
+// Lazy Load Components for faster initial load
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const Vault = lazy(() => import('./components/Vault'));
+const Family = lazy(() => import('./components/Family'));
+const Assets = lazy(() => import('./components/Assets'));
+const Residential = lazy(() => import('./components/Residential'));
+const Vehicles = lazy(() => import('./components/Vehicles'));
+const Schema = lazy(() => import('./components/Schema'));
+const Profile = lazy(() => import('./components/Profile'));
+const Settings = lazy(() => import('./components/Settings'));
 
 export default function App() {
   return (
@@ -35,6 +37,7 @@ export default function App() {
 
 function AuthRouter() {
   const { user, profile, loading } = useAuth();
+  const { t } = useLanguage();
 
   if (loading) {
     return (
@@ -64,14 +67,16 @@ function AuthRouter() {
 
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-black text-primary font-headline tracking-tighter uppercase">MyAsset</h1>
-            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.3em] opacity-60">Synchronizing Global Estate...</p>
+            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.3em] opacity-60">
+              {t('synchronizingEstate')}
+            </p>
           </div>
 
           <div className="w-48 h-[2px] bg-outline-variant/30 rounded-full overflow-hidden">
             <motion.div 
               initial={{ x: '-100%' }}
               animate={{ x: '100%' }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
               className="w-full h-full bg-gradient-to-r from-transparent via-primary to-transparent"
             />
           </div>
@@ -93,23 +98,34 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return <Dashboard />;
-      case 'family': return <Family />;
-      case 'assets': return <Assets />;
-      case 'residential': return <Residential />;
-      case 'vehicles': return <Vehicles />;
-      case 'vault': return <Vault />;
-      case 'schema': return <Schema />;
-      case 'profile': return <Profile />;
-      case 'settings': return <Settings />;
-      default:
-        return (
-          <div className="flex items-center justify-center h-full text-outline font-headline font-bold uppercase tracking-widest bg-surface-container-low rounded-[2.5rem] p-40">
-            Section coming soon
-          </div>
-        );
-    }
+    return (
+      <Suspense fallback={
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-outline/40">Preparing View...</p>
+        </div>
+      }>
+        {(() => {
+          switch (activeTab) {
+            case 'dashboard': return <Dashboard />;
+            case 'family': return <Family />;
+            case 'assets': return <Assets />;
+            case 'residential': return <Residential />;
+            case 'vehicles': return <Vehicles />;
+            case 'vault': return <Vault />;
+            case 'schema': return <Schema />;
+            case 'profile': return <Profile />;
+            case 'settings': return <Settings />;
+            default:
+              return (
+                <div className="flex items-center justify-center h-full text-outline font-headline font-bold uppercase tracking-widest bg-surface-container-low rounded-[2.5rem] p-40">
+                  Section coming soon
+                </div>
+              );
+          }
+        })()}
+      </Suspense>
+    );
   };
 
   const quickAddItems = [
@@ -142,7 +158,7 @@ function AppContent() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
             >
               {renderContent()}
             </motion.div>
@@ -203,3 +219,4 @@ function AppContent() {
     </div>
   );
 }
+

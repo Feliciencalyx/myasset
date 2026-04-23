@@ -10,7 +10,7 @@ import { API_BASE } from '../../config';
 export default function AuthScreens() {
   const { setAuthData } = useAuth();
   const { t, language, setLanguage } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,7 +70,7 @@ export default function AuthScreens() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || (isLogin ? 'Login failed' : 'Registration failed'));
+        throw new Error(data.error || (isLogin ? t('loginFailed') : t('registrationFailed')));
       }
 
       setAuthData(data.token, data.user);
@@ -83,7 +83,7 @@ export default function AuthScreens() {
 
   const handleResetPassword = async () => {
     if (!email) {
-      setError('Please enter your email address first.');
+      setError(t('enterEmailFirst'));
       return;
     }
     setError('');
@@ -124,7 +124,7 @@ export default function AuthScreens() {
       
       // Update local state and reload to apply
       setShowSetup(false);
-      setSuccess('Infrastructure Linked!');
+      setSuccess(t('resetCodeSent'));
       window.location.reload();
     } catch (err: any) {
       setError(err.message);
@@ -169,7 +169,10 @@ export default function AuthScreens() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Google Sign-In failed');
+      if (!response.ok) {
+        setError(t('googleSignInFailed'));
+        return;
+      }
 
       setAuthData(data.token, data.user);
     } catch (err: any) {
@@ -224,18 +227,18 @@ export default function AuthScreens() {
 
         {/* Theme Toggle */}
         <button 
-          onClick={toggleTheme}
+          onClick={toggleDarkMode}
           className="p-3 bg-surface-container-high hover:bg-surface-container-highest rounded-full border-[1px] border-outline-variant/30 transition-all group"
         >
           <AnimatePresence mode="wait">
             <motion.div
-              key={theme}
+              key={isDarkMode ? 'dark' : 'light'}
               initial={{ rotate: -90, opacity: 0 }}
               animate={{ rotate: 0, opacity: 1 }}
               exit={{ rotate: 90, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {theme === 'dark' ? (
+              {isDarkMode ? (
                 <Sun className="w-4 h-4 text-amber-400" />
               ) : (
                 <Moon className="w-4 h-4 text-blue-500" />
@@ -324,24 +327,24 @@ export default function AuthScreens() {
           <div className="space-y-4">
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
-              <input 
-                type="email" 
-                placeholder="Email Address" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
-              />
+                <input 
+                  type="email" 
+                  placeholder={t('emailAddressLabel')} 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
+                />
             </div>
 
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
-              <input 
-                type="password" 
-                placeholder="Password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
-              />
+                <input 
+                  type="password" 
+                  placeholder={t('passwordLabel')} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
+                />
             </div>
           </div>
 
@@ -366,7 +369,7 @@ export default function AuthScreens() {
                   <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
                   <input 
                     type="text" 
-                    placeholder="Enter 6-Digit Code" 
+                    placeholder={t('resetCodeLabel')} 
                     value={resetCodeInput}
                     onChange={(e) => setResetCodeInput(e.target.value)}
                     required
@@ -377,7 +380,7 @@ export default function AuthScreens() {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
                   <input 
                     type="password" 
-                    placeholder="Enter Your New Password" 
+                    placeholder={t('newPasswordLabel')} 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required

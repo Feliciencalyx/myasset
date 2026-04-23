@@ -55,7 +55,7 @@ export default function Vehicles() {
             onClick={() => setShowModal(true)}
             className="bg-primary text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:opacity-90 transition-all shadow-xl"
           >
-            <Plus size={18} /> Register Vehicle
+            <Plus size={18} /> {t('registerVehicle')}
           </button>
         )}
       </header>
@@ -105,29 +105,29 @@ export default function Vehicles() {
               <div className="flex justify-between items-start">
                 <div>
                   <h4 className="text-3xl font-black text-primary font-headline tracking-tighter">{vehicle.model}</h4>
-                  <p className="text-xs text-outline font-black uppercase tracking-widest mt-1">Registry Code: {vehicle.reg}</p>
+                  <p className="text-xs text-outline font-black uppercase tracking-widest mt-1">{t('registryCode')}: {vehicle.reg}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">Owner of Record</p>
+                  <p className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">{t('ownerOfRecord')}</p>
                   <p className="text-lg font-black text-primary font-headline">{vehicle.owner}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-8 border-y border-outline-variant/10 my-8">
                  <div className="space-y-1">
-                   <p className="text-[9px] font-black text-outline uppercase tracking-tighter">Insurance Expiry</p>
+                   <p className="text-[9px] font-black text-outline uppercase tracking-tighter">{t('insuranceExpiry')}</p>
                    <p className="text-sm font-bold text-primary flex items-center gap-2">
                      <Clock size={14} className="text-primary/40" /> {vehicle.insuranceExpiry}
                    </p>
                  </div>
                  <div className="space-y-1">
-                   <p className="text-[9px] font-black text-outline uppercase tracking-tighter">Last Workshop Event</p>
+                   <p className="text-[9px] font-black text-outline uppercase tracking-tighter">{t('lastWorkshopEvent')}</p>
                    <p className="text-sm font-bold text-primary flex items-center gap-2">
                      <Calendar size={14} className="text-primary/40" /> {vehicle.lastService}
                    </p>
                  </div>
                  <div className="space-y-1">
-                   <p className="text-[9px] font-black text-outline uppercase tracking-tighter">Live Location</p>
+                   <p className="text-[9px] font-black text-outline uppercase tracking-tighter">{t('liveLocation')}</p>
                    <p className="text-sm font-bold text-primary flex items-center gap-2">
                      <Navigation size={14} className="text-primary/40" /> {vehicle.location}
                    </p>
@@ -141,10 +141,10 @@ export default function Vehicles() {
               <div className="flex justify-between items-center">
                  <div className="flex gap-4">
                    <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary border border-outline-variant/30 px-6 py-3 rounded-xl hover:bg-surface-container-low transition-colors">
-                     <FileText size={16} /> Asset Log
+                     <FileText size={16} /> {t('assetLog')}
                    </button>
                    <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary border border-outline-variant/30 px-6 py-3 rounded-xl hover:bg-surface-container-low transition-colors">
-                     <AlertCircle size={16} /> Maintenance Request
+                     <AlertCircle size={16} /> {t('maintenanceRequest')}
                    </button>
                  </div>
                  <div className="flex items-center gap-3">
@@ -178,10 +178,10 @@ export default function Vehicles() {
                className="bg-white rounded-[3rem] p-12 max-w-xl w-full shadow-2xl relative"
             >
                <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-outline text-2xl font-black">×</button>
-               <h3 className="text-3xl font-black text-primary font-headline tracking-tighter mb-8">Register Vehicle</h3>
+               <h3 className="text-3xl font-black text-primary font-headline tracking-tighter mb-8">{t('registerVehicle')}</h3>
                <div className="space-y-6">
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-outline">Model Name</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline">{t('modelName')}</label>
                     <input 
                       type="text" 
                       value={model}
@@ -191,7 +191,7 @@ export default function Vehicles() {
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-outline">Registration Number</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline">{t('registrationNumber')}</label>
                     <input 
                       type="text" 
                       value={reg}
@@ -201,7 +201,7 @@ export default function Vehicles() {
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-outline">Owner of Record</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-outline">{t('ownerOfRecord')}</label>
                     <input 
                       type="text" 
                       value={owner}
@@ -213,7 +213,7 @@ export default function Vehicles() {
                   onClick={handleAddVehicle}
                   className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-widest mt-4 shadow-xl shadow-primary/20"
                  >
-                   Save Vehicle to Fleet
+                   {t('saveVehicleToFleet')}
                  </button>
                </div>
             </motion.div>

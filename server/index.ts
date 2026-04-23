@@ -11,9 +11,12 @@ import fs from 'fs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
+import compression from 'compression';
+
 dotenv.config();
 
 const app = express();
+app.use(compression()); // Compress all responses
 const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET || 'estate-master-key-2026';
@@ -24,22 +27,19 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow all origins in dev for ease of use
-    callback(null, true);
-  },
+  origin: true, // More permissive for dev
   credentials: true
 }));
 app.use(cookieParser());
 
 // Security & Optimization
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for easier dev/map integration, or configure properly
+  contentSecurityPolicy: false,
 }));
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 5 * 60 * 1000, // 5 minutes (reduced from 15)
+  max: 500, // Increased from 100 to avoid throttling legitimate reloads
   message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -55,7 +55,10 @@ const dbConfig = {
   user: process.env.ORACLE_USER || 'system',
   password: process.env.ORACLE_PASSWORD || 'mine',
   connectString: process.env.ORACLE_CONN_STRING || 'localhost:1521/FREE',
-  queueTimeout: 120000
+  poolMin: 2,
+  poolMax: 10,
+  poolIncrement: 2,
+  queueTimeout: 60000 // Reduced from 120s
 };
 
 let pool: oracledb.Pool | null = null;
@@ -784,6 +787,65 @@ app.delete('/api/assets/vehicles/:id', authenticateToken, authorizeAdmin, async 
     await connection.execute(`DELETE FROM vehicles WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.get('/api/family/members', authenticateToken, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const result: any = await connection.execute(
+      `SELECT id, email, name, role, family_id, photo_url FROM users WHERE family_id = :fid`,
+      [req.user.familyId || ''],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    
+    const members = await Promise.all(result.rows.map(async (row: any) => {
+      let photoUrl = '';
+      if (row.PHOTO_URL) {
+        photoUrl = await row.PHOTO_URL.getData();
+      }
+      return {
+        id: row.ID,
+        email: row.EMAIL,
+        name: row.NAME,
+        role: row.ROLE,
+        familyId: row.FAMILY_ID,
+        photoUrl,
+        status: 'ACTIVE'
+      };
+    }));
+    
+    res.json(members);
+  } catch (err) {
+    res.status(500).json({ error: 'Fetch failed.' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+app.post('/api/family/members', authenticateToken, authorizeAdmin, async (req: any, res) => {
+  const { email, password, fullName, role } = req.body;
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const id = Date.now().toString();
+    const familyId = req.user.familyId;
+    
+    await connection.execute(
+      `INSERT INTO users (id, email, password_hash, name, role, family_id) VALUES (:id, :email, :pass, :name, :role, :fid)`,
+      [id, email, hashedPassword, fullName, role, familyId],
+      { autoCommit: true }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add member.' });
+  } finally {
+    if (connection) await connection.close();
+  }
 });
 
 

@@ -11,7 +11,7 @@ interface Translations {
 const translations: Translations = {
   // Navigation & General
   dashboard: { en: 'Estate Overview', rw: 'Incamake y’Umutungo', fr: 'Aperçu du Patrimoine' },
-  family: { en: 'Family Stewardship', rw: 'Uburere bw’Umuryango', fr: 'Gouvernance Familiale' },
+  family: { en: "{adminName}'s Family", rw: "Umuryango wa {adminName}", fr: "Famille de {adminName}" },
   assets: { en: 'Land Registry', rw: 'Ibitabo by’Ubutaka', fr: 'Registre Foncier' },
   residential: { en: 'Residential System', rw: 'Amazu Yo Guturamo', fr: 'Système Résidentiel' },
   vehicles: { en: 'Vehicle Fleet', rw: 'Ibinyabiziga', fr: 'Parc Automobile' },
@@ -35,10 +35,7 @@ const translations: Translations = {
   verifying: { en: 'Verifying Identity...', rw: 'Gusuzuma Umwirondoro...', fr: 'Vérification d’Identité...' },
   securing: { en: 'Securing Vault...', rw: 'Kurinda Ububiko...', fr: 'Sécurisation du Coffre...' },
   syncing: { en: 'Synchronizing...', rw: 'Kuvugurura...', fr: 'Synchronisation...' },
-  secureLogin: { en: 'Secure Login', rw: 'Injira neza', fr: 'Connexion Sécurisée' },
-  registerEstate: { en: 'Register Estate', rw: 'Andika Umutungo', fr: 'Enregistrer le Domaine' },
-  joinRegistry: { en: 'Join Family Registry', rw: 'Iyandikishe mu Muryango', fr: 'Rejoindre le Registre' },
-  alreadyRegistered: { en: 'Already Registered? Login', rw: 'Urasanzwe wanditse? Injira', fr: 'Déjà inscrit ? Connexion' },
+
 
   // Dashboard
   heritageHeader: { en: 'MyAsset Family Registry', rw: 'Registry y’Umuryango ya MyAsset', fr: 'Registre Familial MyAsset' },
@@ -114,7 +111,7 @@ const translations: Translations = {
   // Auth
   secureLogin: { en: 'Secure Login', rw: 'Injira neza', fr: 'Connexion Sécurisée' },
   registerEstate: { en: 'Register Estate', rw: 'Andika Umutungo', fr: 'Enregistrer le Patrimoine' },
-  familyStewardship: { en: 'Family Stewardship', rw: 'Uburere bw’Umuryango', fr: 'Gouvernance Familiale' },
+  familyStewardship: { en: "{adminName}'s Family", rw: "Umuryango wa {adminName}", fr: "Famille de {adminName}" },
   parentAdmin: { en: 'Parent / Admin', rw: 'Umubyeyi / Umuyobozi', fr: 'Parent / Admin' },
   childUser: { en: 'Child / User', rw: 'Umwana / Umukoresha', fr: 'Enfant / Utilisateur' },
   joinRegistry: { en: 'Join your family estate registry', rw: 'Injira muri registry y’umuryango', fr: 'Rejoindre le registre familial' },
@@ -141,14 +138,87 @@ const translations: Translations = {
   biometricEnabled: { en: '2FA - Biometric Enabled', rw: 'Umutekano wifashisha urutoki', fr: '2FA - Biométrie Activée' },
   lastRegistryUpdate: { en: 'Last Registry Update', rw: 'Iheruka Kuvugururwa', fr: 'Dernière Mise à Jour' },
   accessExpiration: { en: 'Access Expiration', rw: 'Igihe cyo Gucyurirwa', fr: 'Expiration de l’Accès' },
-  revokeAccess: { en: 'Revoke Global Access', rw: 'Hagarika Iyinjira', fr: 'Révoquer l’Accès' }
+  revokeAccess: { en: 'Revoke Global Access', rw: 'Hagarika Iyinjira', fr: 'Révoquer l’Accès' },
+
+  // New Global Strings
+  managingGenerational: { en: 'Managing generational roles and governance for the estate registry.', rw: 'Igenzura ry’imicungire y’umutungo n’uruhererekane mu muryango.', fr: 'Gestion des rôles générationnels et de la gouvernance du registre.' },
+  governanceLevel: { en: 'Governance Level', rw: 'Urwego rw’Igenzura', fr: 'Niveau de Gouvernance' },
+  multiGenerational: { en: 'Multi-Generational', rw: 'Iby’ibisekuru byinshi', fr: 'Multi-Générationnel' },
+  activeAccessTokens: { en: 'Active Access Tokens', rw: 'Imfunguzo zikora', fr: 'Jetons d’Accès Actifs' },
+  securityStatus: { en: 'Security Status', rw: 'Imimerere y’Umutekano', fr: 'Statut de Sécurité' },
+  addFamilyMember: { en: 'Add Family Member', rw: 'Ongeramo Umunyamuryango', fr: 'Ajouter un Membre' },
+  accessLedger: { en: 'Access Ledger', rw: 'Inyandiko y’Ibyinjira', fr: 'Registre d’Accès' },
+  reviewRoadmap: { en: 'Review Roadmap', rw: 'Reba Igenamigambi', fr: 'Revoir la Feuille de Route' },
+  directBeneficiaries: { en: 'Direct Beneficiaries', rw: 'Abaragwa b’imena', fr: 'Bénéficiaires Directs' },
+  philanthropicEscrow: { en: 'Philanthropic Escrow', rw: 'Inkunga y’Abagiraneza', fr: 'Escrow Philanthropique' },
+  systemMaintenanceFund: { en: 'System Maintenance fund', rw: 'Ikigega cy’Imitunganyirize', fr: 'Fonds de Maintenance Système' },
+  valuationTrend: { en: '+12.4% vs 2025', rw: '+12.4% ugereranyije na 2025', fr: '+12.4% par rapport à 2025' },
+  registeredPlotsCount: { en: 'across {count} Registered Plots', rw: 'mu bibanza {count} byanditse', fr: 'sur {count} parcelles enregistrées' },
+  occupancyYield: { en: '{yield}% Occupancy Yield', rw: '{yield}% Inyungu y’Abayabamo', fr: '{yield}% de Rendement d’Occupation' },
+  insuredTracked: { en: 'Fully Insured/Tracked', rw: 'Bifite ubwishingizi/Bikurikiranwa', fr: 'Assuré/Suivi Entièrement' },
+  masterPlanSync: { en: 'Master Plan Sync', rw: 'Guhuza n’Igishushanyo Mbonera', fr: 'Synchro Plan Directeur' },
+  upiLayer: { en: 'UPI Layer', rw: 'Imiterere ya UPI', fr: 'Couche UPI' },
+  lastRegisteredPlot: { en: 'LAST REGISTERED PLOT', rw: 'UMUTUNGO WA NYUMA WANDITSWE', fr: 'DERNIÈRE PARCELLE ENREGISTRÉE' },
+  viewInRegistry: { en: 'View in Registry', rw: 'Reba muri Registry', fr: 'Voir dans le Registre' },
+  noAssetsRecorded: { en: 'No Assets Recorded', rw: 'Nta mutungo wanditse', fr: 'Aucun Actif Enregistré' },
+  startDocumenting: { en: 'Start documenting your legacy by adding your first land parcel in the Land Registry.', rw: 'Tangira kwandika umurage wawe ushyiramo isambu yawe ya mbere.', fr: 'Commencez à documenter votre héritage en ajoutant votre première parcelle.' },
+  latestRegistryActivity: { en: 'LATEST REGISTRY ACTIVITY', rw: 'IBIKORWA BYA NYUMA MURI REGISTRY', fr: 'DERNIÈRE ACTIVITÉ DU REGISTRE' },
+  waitingForFirstEntry: { en: 'Waiting for first registry entry...', rw: 'Gutegereza inyandiko ya mbere...', fr: 'En attente de la première entrée...' },
+  marketCapitalization: { en: 'Market Capitalization', rw: 'Agaciro k’Isoko Ryose', fr: 'Capitalisation Boursière' },
+  totalPortfolioValue: { en: 'Total Portfolio Value', rw: 'Agaciro k’Umutungo Wose', fr: 'Valeur Totale du Portfolio' },
+  openServiceTickets: { en: 'Open Service Tickets', rw: 'Tiketi z’Ibikorerwa Inyubako', fr: 'Tickets de Service Ouverts' },
+  marketAssetValue: { en: 'Market Asset Value', rw: 'Agaciro k’Umutungo ku Isoko', fr: 'Valeur de l’Actif sur le Marché' },
+  activeTenant: { en: 'Active Tenant', rw: 'Uyukodesha ubu', fr: 'Locataire Actif' },
+  rentalAgreement: { en: 'Rental Agreement', rw: 'Amasezerano y’Ubukode', fr: 'Contrat de Location' },
+  maintenanceLog: { en: 'Maintenance Log', rw: 'Inyandiko y’Ibisubirwamo', fr: 'Journal de Maintenance' },
+  landContext: { en: 'Land Context', rw: 'Imimerere y’Ubutaka', fr: 'Contexte Foncier' },
+  removeProperty: { en: 'Remove Property', rw: 'Siba Inyubako', fr: 'Supprimer la Propriété' },
+  addResidentialProperty: { en: 'Add Residential Property', rw: 'Ongeramo Inyubako yo Guturamo', fr: 'Ajouter une Propriété Résidentielle' },
+  estatePortfolioExpansion: { en: 'Estate Portfolio Expansion', rw: 'Kwagura Umutungo w’Umuryango', fr: 'Expansion du Portfolio Immobilier' },
+  propertyName: { en: 'Property Name', rw: 'Izina ry’Inyubako', fr: 'Nom de la Propriété' },
+  linkToLandPlot: { en: 'Link to Land Plot (UPI)', rw: 'Huza n’Ibibanza (UPI)', fr: 'Lien vers la Parcelle (UPI)' },
+  noLink: { en: 'No Link', rw: 'Nta Mpuzanyandiko', fr: 'Aucun Lien' },
+  geographicLocation: { en: 'Geographic Location', rw: 'Ahantu Biherereye', fr: 'Emplacement Géographique' },
+  currentStatus: { en: 'Current Status', rw: 'Imimerere y’Ubu', fr: 'Statut Actuel' },
+  marketAppreciationValue: { en: 'Market Appreciation Value', rw: 'Agaciro k’Izamuka ry’Isoko', fr: 'Valeur de Plus-value du Marché' },
+  monthlyYieldRent: { en: 'Monthly Yield (Rent/Lease)', rw: 'Inyungu ku Kwezi (Ubukode)', fr: 'Rendement Mensuel (Loyer/Bail)' },
+  registerVehicle: { en: 'Register Vehicle', rw: 'Andika Ikinyabiziga', fr: 'Enregistrer le Véhicule' },
+  modelName: { en: 'Model Name', rw: 'Ubwoko bw’Ikinyabiziga', fr: 'Nom du Modèle' },
+  registrationNumber: { en: 'Registration Number', rw: 'Pulaake y’Ikinyabiziga', fr: 'Numéro d’Immatriculation' },
+  ownerOfRecord: { en: 'Owner of Record', rw: 'Nyirubwite wanditse', fr: 'Propriétaire Officiel' },
+  saveVehicleToFleet: { en: 'Save Vehicle to Fleet', rw: 'Bika Ikinyabiziga', fr: 'Sauvegarder le Véhicule' },
+  insuranceExpiry: { en: 'Insurance Expiry', rw: 'Igihe Ubwishingizi Burangirira', fr: 'Expiration de l’Assurance' },
+  lastWorkshopEvent: { en: 'Last Workshop Event', rw: 'Igihe cyahereherutse gusanwa', fr: 'Dernier Passage au Garage' },
+  liveLocation: { en: 'Live Location', rw: 'Aho giherereye ubu', fr: 'Localisation en Direct' },
+  assetLog: { en: 'Asset Log', rw: 'Inyandiko z’Umutungo', fr: 'Journal de l’Actif' },
+  maintenanceRequest: { en: 'Maintenance Request', rw: 'Gusaba ko Gisanwa', fr: 'Demande de Maintenance' },
+  welcome: { en: 'WELCOME TO REGISTRY', rw: 'KAZE MURI REGISTRY', fr: 'BIENVENUE AU REGISTRE' },
+  removeVehicle: { en: 'Remove Vehicle', rw: 'Siba Ikinyabiziga', fr: 'Supprimer le Véhicule' },
+  loginFailed: { en: 'Login failed', rw: 'Iyinjira ryanze', fr: 'Échec de la connexion' },
+  registrationFailed: { en: 'Registration failed', rw: 'Iyandikisha ryanze', fr: 'Échec de l’enregistrement' },
+  enterEmailFirst: { en: 'Please enter your email address first.', rw: 'Banza wandike imeri yawe.', fr: 'Veuillez d’abord saisir votre adresse e-mail.' },
+  resetCodeSent: { en: 'Reset code sent! Please check your email.', rw: 'Imibare yo guhindura ijambo ry’ibanga yoherejwe. Reba imeri yawe.', fr: 'Code de réinitialisation envoyé ! Vérifiez votre e-mail.' },
+  passwordResetSuccess: { en: 'Password reset successfully! Please login.', rw: 'Ijambo ry’ibanga ryahinduwe neza. Injira ubu.', fr: 'Mot de passe réinitialisé avec succès ! Connectez-vous.' },
+  googleSignInFailed: { en: 'Google Sign-In failed', rw: 'Iyinjira rya Google ryanze', fr: 'Échec de la connexion Google' },
+  resetPassword: { en: 'Reset Password', rw: 'Hindura Ijambo ry’ibanga', fr: 'Réinitialiser le Mot de Passe' },
+  confirmReset: { en: 'Confirm Reset', rw: 'Emeza Guhindura', fr: 'Confirmer la Réinitialisation' },
+  fullName: { en: 'Full Name', rw: 'Amazina Yose', fr: 'Nom Complet' },
+  secureLoginVault: { en: 'Secure login to family vault', rw: 'Injira neza mu muryango', fr: 'Connexion sécurisée au coffre familial' },
+  registerFamilyRegistry: { en: 'Register your family estate registry', rw: 'Andika umutungo w’umuryango wawe', fr: 'Enregistrer votre registre familial' },
+  emailAddressLabel: { en: 'Email Address', rw: 'Imeri', fr: 'Adresse E-mail' },
+  passwordLabel: { en: 'Password', rw: 'Ijambo ry’ibanga', fr: 'Mot de Passe' },
+  newPasswordLabel: { en: 'New Password', rw: 'Ijambo ry’ibanga rishya', fr: 'Nouveau Mot de Passe' },
+  resetCodeLabel: { en: 'Reset Code', rw: 'Imibare yo guhindura', fr: 'Code de Réinitialisation' },
+  imageSizeLimit: { en: 'Image size must be less than 20MB', rw: 'Ifoto igomba kuba iri munsi ya 20MB', fr: 'L’image doit faire moins de 20MB' },
+  synchronizingEstate: { en: 'Synchronizing Global Estate...', rw: 'Guhuza Umutungo ku Isi Yose...', fr: 'Synchronisation du Patrimoine Global...' },
+  globalAssetRegistry: { en: 'GLOBAL ASSET REGISTRY', rw: 'ANDIKISHA IMITUNGO KU ISI', fr: 'REGISTRE MONDIAL DES ACTIFS' }
 };
 
 interface LanguageContextType {
   language: Language;
   currency: string;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string>) => string;
   formatCurrency: (value: number) => string;
   convertToBase: (localValue: number) => number; 
   convertToLocal: (baseValue: number) => number;
@@ -228,9 +298,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const t = (key: string) => {
+  const t = (key: string, vars?: Record<string, string>) => {
     if (!translations[key]) return key;
-    return translations[key][language];
+    let text = translations[key][language];
+    if (vars) {
+      for (const [k, v] of Object.entries(vars)) {
+        text = text.replace(new RegExp(`{${k}}`, 'g'), v);
+      }
+    }
+    return text;
   };
 
   const updateLanguage = (lang: Language) => {

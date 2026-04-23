@@ -53,7 +53,7 @@ export default function TopBar({ setActiveTab, activeTab, onOpenSidebar }: TopBa
           }`}
         >
           {isAdmin ? <Shield size={14} /> : <User size={14} />}
-          <span className="hidden md:inline">{profile?.role}: {profile?.name}</span>
+          <span className="hidden md:inline">{profile?.role}: {profile?.fullName}</span>
         </div>
 
         <button 

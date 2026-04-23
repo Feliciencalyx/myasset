@@ -8,7 +8,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   familyId: string;
-  name: string;
+  fullName: string;
   photoUrl?: string;
 }
 
@@ -30,6 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchCurrentUser = async () => {
+    // Check cache for instant entry
+    const cached = localStorage.getItem('user_profile');
+    if (cached && loading) {
+      setUser(JSON.parse(cached));
+      setLoading(false);
+    }
+
     try {
       const response = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { 'Content-Type': 'application/json' },
@@ -39,6 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+        localStorage.setItem('user_profile', JSON.stringify(data.user));
+      } else if (response.status === 401) {
+        setUser(null);
+        localStorage.removeItem('user_profile');
       }
     } catch (e) {
       console.error("Session restoration failed");
@@ -52,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = async () => {
+    localStorage.removeItem('user_profile');
     try {
       await fetch(`${API_BASE}/api/auth/logout`, {
         method: 'POST',
