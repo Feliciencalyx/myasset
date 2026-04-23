@@ -27,6 +27,18 @@ const translations: Translations = {
   premiumTier: { en: 'Premium Tier', rw: 'Uryo Hejuru', fr: 'Niveau Premium' },
   addNewAsset: { en: 'Add New Asset', rw: 'Andika Umutungo Mushya', fr: 'Ajouter un Actif' },
   viewOnlyMode: { en: 'Family Member Access: View-Only Mode Active', rw: 'Uruhare rw’Umuryango: Reba Gusa', fr: 'Accès Membre: Lecture Seule' },
+  
+  // Auth & Status
+  loginTitle: { en: 'Family Estate Login', rw: 'Injira mu Mutungo', fr: 'Connexion au Domaine' },
+  signupTitle: { en: 'Register New Estate', rw: 'Andika Umutungo Mushya', fr: 'Enregistrer un Domaine' },
+  connecting: { en: 'Connecting to Registry...', rw: 'Guhuza n’Inyandiko...', fr: 'Connexion au Registre...' },
+  verifying: { en: 'Verifying Identity...', rw: 'Gusuzuma Umwirondoro...', fr: 'Vérification d’Identité...' },
+  securing: { en: 'Securing Vault...', rw: 'Kurinda Ububiko...', fr: 'Sécurisation du Coffre...' },
+  syncing: { en: 'Synchronizing...', rw: 'Kuvugurura...', fr: 'Synchronisation...' },
+  secureLogin: { en: 'Secure Login', rw: 'Injira neza', fr: 'Connexion Sécurisée' },
+  registerEstate: { en: 'Register Estate', rw: 'Andika Umutungo', fr: 'Enregistrer le Domaine' },
+  joinRegistry: { en: 'Join Family Registry', rw: 'Iyandikishe mu Muryango', fr: 'Rejoindre le Registre' },
+  alreadyRegistered: { en: 'Already Registered? Login', rw: 'Urasanzwe wanditse? Injira', fr: 'Déjà inscrit ? Connexion' },
 
   // Dashboard
   heritageHeader: { en: 'MyAsset Family Registry', rw: 'Registry y’Umuryango ya MyAsset', fr: 'Registre Familial MyAsset' },

@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Mail, Lock, User, ArrowRight, AlertCircle, Building2, Sun, Moon, Globe, ChevronDown } from 'lucide-react';
@@ -19,6 +19,7 @@ export default function AuthScreens() {
   const [familyId, setFamilyId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [success, setSuccess] = useState('');
   const [showSetup, setShowSetup] = useState(false);
   const [isResetStep, setIsResetStep] = useState(false);
@@ -59,6 +60,24 @@ export default function AuthScreens() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (loading) {
+      const messages = [
+        t('connecting'), 
+        t('verifying'), 
+        t('securing'),
+        t('syncing')
+      ];
+      let i = 0;
+      setLoadingMessage(messages[0]);
+      const interval = setInterval(() => {
+        i = (i + 1) % messages.length;
+        setLoadingMessage(messages[i]);
+      }, 800);
+      return () => clearInterval(interval);
+    }
+  }, [loading, t]);
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -425,8 +444,24 @@ export default function AuthScreens() {
             disabled={loading}
             className="w-full py-5 bg-primary text-white rounded-2xl font-headline font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
           >
-            {loading ? "Synchronizing..." : isLogin ? t('secureLogin') : t('registerEstate')}
-            <ArrowRight size={18} />
+            {loading ? (
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <motion.span
+                  key={loadingMessage}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="min-w-[140px]"
+                >
+                  {loadingMessage}
+                </motion.span>
+              </div>
+            ) : (
+              <>
+                {isLogin ? t('secureLogin') : t('registerEstate')}
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </form>
 
