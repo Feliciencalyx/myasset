@@ -64,10 +64,10 @@ async function initializeDatabase() {
     await oracledb.createPool(dbConfig);
     console.log('Successfully created Oracle Database Pool');
 
-    // Force a 25-second timeout for the initial connection
+    // Force a 60-second timeout for the initial connection and table creation
     const connection = await Promise.race([
       oracledb.getConnection(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('DATABASE_CONNECTION_TIMEOUT_25S')), 25000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('DATABASE_CONNECTION_TIMEOUT_60S')), 60000))
     ]) as oracledb.Connection;
 
     console.log('Successfully acquired connection from pool');
