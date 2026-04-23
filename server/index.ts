@@ -50,8 +50,9 @@ app.use('/api/auth/', limiter);
 let resendClient = new Resend(process.env.RESEND_API_KEY || 'no-key-yet');
 const getEmailSender = () => process.env.EMAIL_SENDER || 'onboarding@resend.dev';
 
-// Activity Logger
+// System Activity Monitor
 async function createNotification(userId: string, familyId: string, type: string, message: string) {
+  if (!userId || !familyId) return;
   let connection;
   try {
     const p = await getPool();
@@ -111,12 +112,12 @@ async function initializeDatabase() {
 
     console.log('Database connected. Checking schema...');
     
-    // Check if the schema is already initialized by looking for the 'users' table
+    // Ensure all tables exist (Creation skipped if already present)
     const tableCheck: any = await connection.execute(
       `SELECT table_name FROM user_tables WHERE table_name = 'USERS'`
     );
 
-    if (tableCheck.rows.length > 0) {
+    if (false) { // Skip bypass to ensure new tables like notifications are created
       console.log('Schema already exists. Skipping full initialization.');
       poolInitialized = true;
       return;
