@@ -27,6 +27,26 @@ export default function AuthScreens() {
   const [newPassword, setNewPassword] = useState('');
   const [setupKey, setSetupKey] = useState('');
   const [setupSender, setSetupSender] = useState('');
+  const [showLangDropdown, setShowLangDropdown] = useState(false);
+
+  useEffect(() => {
+    let interval: any;
+    if (loading) {
+      const messages = [
+        t('connecting'), 
+        t('verifying'), 
+        t('securing'),
+        t('syncing')
+      ];
+      let i = 0;
+      setLoadingMessage(messages[0]);
+      interval = setInterval(() => {
+        i = (i + 1) % messages.length;
+        setLoadingMessage(messages[i]);
+      }, 800);
+    }
+    return () => clearInterval(interval);
+  }, [loading, t]);
 
   const handleAuth = async (e: FormEvent) => {
     e.preventDefault();
@@ -57,27 +77,9 @@ export default function AuthScreens() {
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     }
   };
-
-  useEffect(() => {
-    if (loading) {
-      const messages = [
-        t('connecting'), 
-        t('verifying'), 
-        t('securing'),
-        t('syncing')
-      ];
-      let i = 0;
-      setLoadingMessage(messages[0]);
-      const interval = setInterval(() => {
-        i = (i + 1) % messages.length;
-        setLoadingMessage(messages[i]);
-      }, 800);
-      return () => clearInterval(interval);
-    }
-  }, [loading, t]);
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -119,8 +121,11 @@ export default function AuthScreens() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      setSuccess(data.message);
+      
+      // Update local state and reload to apply
       setShowSetup(false);
+      setSuccess('Infrastructure Linked!');
+      window.location.reload();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -154,18 +159,13 @@ export default function AuthScreens() {
     setError('');
     setLoading(true);
     try {
-      const user = await signInWithGoogle();
+      const result = await signInWithGoogle();
+      const token = await result.user.getIdToken();
+      
       const response = await fetch(`${API_BASE}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        //@ts-ignore
-        credentials: 'include',
-        body: JSON.stringify({
-          email: user.email,
-          name: user.displayName,
-          photoUrl: user.photoURL,
-          uid: user.uid
-        })
+        body: JSON.stringify({ token, email: result.user.email })
       });
 
       const data = await response.json();
@@ -186,24 +186,40 @@ export default function AuthScreens() {
       {/* Top Bar Controls */}
       <div className="absolute top-8 right-8 flex items-center gap-4 z-50">
         {/* Language Switcher */}
-        <div className="relative group">
-          <button className="flex items-center gap-2 px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest rounded-full border-[1px] border-outline-variant/30 transition-all text-on-surface text-[10px] font-bold tracking-widest uppercase">
+        <div className="relative">
+          <button 
+            onClick={() => setShowLangDropdown(!showLangDropdown)}
+            className="flex items-center gap-2 px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest rounded-full border-[1px] border-outline-variant/30 transition-all text-on-surface text-[10px] font-bold tracking-widest uppercase"
+          >
             <Globe className="w-3 h-3 text-primary" />
             {language}
-            <ChevronDown className="w-3 h-3 opacity-40" />
+            <ChevronDown className={`w-3 h-3 opacity-40 transition-transform ${showLangDropdown ? 'rotate-180' : ''}`} />
           </button>
           
-          <div className="absolute top-full right-0 mt-2 w-32 py-2 bg-surface-container-highest border-[1px] border-outline-variant/30 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all z-50 backdrop-blur-xl">
-            {['en', 'fr', 'rw'].map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setLanguage(lang as any)}
-                className={`w-full px-4 py-2 text-left text-[10px] font-bold tracking-widest uppercase hover:bg-primary/10 transition-colors ${language === lang ? 'text-primary' : 'text-on-surface'}`}
+          <AnimatePresence>
+            {showLangDropdown && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full right-0 mt-2 w-40 py-2 bg-surface-container-highest border-[1px] border-outline-variant/30 rounded-2xl shadow-2xl z-50 backdrop-blur-xl"
               >
-                {lang === 'en' ? 'English' : lang === 'fr' ? 'Français' : 'Kinyarwanda'}
-              </button>
-            ))}
-          </div>
+                {['en', 'fr', 'rw'].map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setLanguage(lang as any);
+                      setShowLangDropdown(false);
+                    }}
+                    className={`w-full px-4 py-2 text-left text-[10px] font-bold tracking-widest uppercase hover:bg-primary/10 transition-colors flex items-center justify-between ${language === lang ? 'text-primary' : 'text-on-surface'}`}
+                  >
+                    {lang === 'en' ? 'English' : lang === 'fr' ? 'Français' : 'Kinyarwanda'}
+                    {language === lang && <div className="w-1 h-1 bg-primary rounded-full" />}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Theme Toggle */}
@@ -211,11 +227,21 @@ export default function AuthScreens() {
           onClick={toggleTheme}
           className="p-3 bg-surface-container-high hover:bg-surface-container-highest rounded-full border-[1px] border-outline-variant/30 transition-all group"
         >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform" />
-          ) : (
-            <Moon className="w-4 h-4 text-blue-500 group-hover:-rotate-12 transition-transform" />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={theme}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-blue-500" />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </button>
       </div>
 
@@ -271,82 +297,63 @@ export default function AuthScreens() {
                     placeholder="Full Name" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    required
-                    className="w-full pl-12 pr-6 py-4 bg-surface-container-low rounded-2xl border border-outline-variant/30 focus:border-primary outline-none text-sm font-bold transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     type="button"
-                    onClick={() => setRole('ADMIN')}
-                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                      role === 'ADMIN' ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-surface-container-low text-outline border-outline-variant/30 hover:border-primary/30'
-                    }`}
+                    onClick={() => setRole('USER')}
+                    className={`py-4 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all ${role === 'USER' ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-outline-variant/30 text-outline'}`}
                   >
-                    {t('parentAdmin')}
+                    Family Member
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setRole('USER')}
-                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                      role === 'USER' ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-surface-container-low text-outline border-outline-variant/30 hover:border-primary/30'
-                    }`}
+                    onClick={() => setRole('ADMIN')}
+                    className={`py-4 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all ${role === 'ADMIN' ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-outline-variant/30 text-outline'}`}
                   >
-                    {t('childUser')}
+                    Estate Admin
                   </button>
-                </div>
-
-                <div className="relative">
-                  <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
-                  <input 
-                    type="text" 
-                    placeholder={role === 'ADMIN' ? "Estate ID (Optional for new)" : "Family Estate ID (Required)"} 
-                    value={familyId}
-                    onChange={(e) => setFamilyId(e.target.value)}
-                    required={role === 'USER'}
-                    className="w-full pl-12 pr-6 py-4 bg-surface-container-low rounded-2xl border border-outline-variant/30 focus:border-primary outline-none text-sm font-bold transition-all"
-                  />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
-            <input 
-              type="email" 
-              placeholder="Email Address" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full pl-12 pr-6 py-4 bg-surface-container-low rounded-2xl border border-outline-variant/30 focus:border-primary outline-none text-sm font-bold transition-all"
-            />
-          </div>
-
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
-            <input 
-              type="password" 
-              placeholder="Password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required={isLogin}
-              className="w-full pl-12 pr-6 py-4 bg-surface-container-low rounded-2xl border border-outline-variant/30 focus:border-primary outline-none text-sm font-bold transition-all"
-            />
-          </div>
-
-          {isLogin && (
-            <div className="flex justify-end">
-              <button 
-                type="button"
-                onClick={handleResetPassword}
-                className="text-[10px] font-bold text-primary hover:underline transition-all"
-              >
-                Forgot Password?
-              </button>
+          <div className="space-y-4">
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
+              <input 
+                type="email" 
+                placeholder="Email Address" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
+              />
             </div>
-          )}
+
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/50" size={18} />
+              <input 
+                type="password" 
+                placeholder="Password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button 
+              type="button"
+              onClick={handleResetPassword}
+              className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
 
           <AnimatePresence>
             {isResetStep && (
@@ -389,32 +396,33 @@ export default function AuthScreens() {
           </AnimatePresence>
 
           {error && (
-            <div className="flex items-start gap-3 p-4 bg-error-container text-on-error-container rounded-2xl text-[10px] font-bold leading-relaxed">
-              <AlertCircle size={16} className="shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-start gap-3 p-4 bg-primary-container text-on-primary-container rounded-2xl text-[10px] font-bold leading-relaxed">
-              <Shield size={16} className="shrink-0" />
-              <span>{success}</span>
-            </div>
-          )}
-
-          {showSetup && isLogin && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 bg-surface-container-high rounded-[2rem] border border-primary/20 space-y-4"
+              className="p-4 bg-error/10 border border-error/20 rounded-2xl flex items-center gap-3 text-error text-xs font-bold"
             >
-              <h3 className="text-xs font-black text-primary uppercase tracking-wider flex items-center gap-2">
-                <Shield size={14} />
-                Modern Email Setup
-              </h3>
-              <p className="text-[10px] text-outline leading-normal font-medium">
-                The email system is not linked. Enter your <b>Resend API Key</b> to enable automatic verification codes.
-              </p>
+              <AlertCircle size={16} />
+              {error}
+            </motion.div>
+          )}
+
+          {success && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-4 bg-primary/10 border border-primary/20 rounded-2xl text-primary text-xs font-bold"
+            >
+              {success}
+            </motion.div>
+          )}
+
+          {showSetup && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-3 pt-4 border-t border-outline-variant/20"
+            >
+              <p className="text-[10px] font-black text-outline uppercase tracking-widest text-center">Infrastructure Setup Required</p>
               <input 
                 type="password" 
                 placeholder="Resend API Key (re_...)" 

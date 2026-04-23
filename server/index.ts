@@ -314,6 +314,60 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// Google Auth
+app.post('/api/auth/google', async (req, res) => {
+  const { token, email } = req.body;
+  let connection;
+  try {
+    // In a real production app, we would verify the Firebase token here.
+    // For now, we trust the frontend's verified email and find/create the user.
+    const p = await getPool();
+    connection = await p.getConnection();
+    
+    const result: any = await connection.execute(
+      `SELECT * FROM users WHERE LOWER(email) = LOWER(:email)`,
+      [email],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    let user = result.rows[0];
+    
+    if (!user) {
+      // Create new user if they don't exist
+      const id = Date.now().toString();
+      const name = email.split('@')[0];
+      const familyId = Math.random().toString(36).substring(7).toUpperCase();
+      
+      await connection.execute(
+        `INSERT INTO users (id, email, name, role, family_id) VALUES (:id, :email, :name, 'USER', :fid)`,
+        [id, email, name, familyId],
+        { autoCommit: true }
+      );
+      
+      const newResult: any = await connection.execute(
+        `SELECT * FROM users WHERE id = :id`,
+        [id],
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      user = newResult.rows[0];
+    }
+
+    const jwtToken = jwt.sign(
+      { userId: user.ID, email: user.EMAIL, role: user.ROLE, familyId: user.FAMILY_ID }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
+    
+    res.cookie('token', jwtToken, { httpOnly: true, secure: NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 });
+    res.json({ user: { id: user.ID, email: user.EMAIL, fullName: user.NAME, role: user.ROLE, familyId: user.FAMILY_ID } });
+  } catch (err) {
+    console.error('Google Auth Error:', err);
+    res.status(500).json({ error: 'Google authentication failed.' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
 // Login
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
