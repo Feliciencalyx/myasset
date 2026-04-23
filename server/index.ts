@@ -117,7 +117,9 @@ async function initializeDatabase() {
         family_id VARCHAR2(255),
         photo_url CLOB,
         reset_code VARCHAR2(10),
-        reset_expiry TIMESTAMP
+        reset_expiry TIMESTAMP,
+        is_verified NUMBER(1) DEFAULT 0,
+        verification_code VARCHAR2(10)
       )`,
       `CREATE TABLE land_assets (
         id VARCHAR2(255) PRIMARY KEY,
@@ -171,6 +173,10 @@ async function initializeDatabase() {
         if (!e.message.includes('ORA-00955')) throw e; // Ignore if already exists
       }
     }
+
+    // Migrations for verification columns
+    try { await connection.execute(`ALTER TABLE users ADD is_verified NUMBER(1) DEFAULT 0`); } catch(e) {}
+    try { await connection.execute(`ALTER TABLE users ADD verification_code VARCHAR2(10)`); } catch(e) {}
 
     console.log('Database tables verified/created');
   } catch (err: any) {
@@ -283,38 +289,42 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const id = Date.now().toString();
     const fId = familyId || (role === 'ADMIN' ? Math.random().toString(36).substring(7).toUpperCase() : '');
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     
     await connection.execute(
-      `INSERT INTO users (id, email, password_hash, name, role, family_id) VALUES (:id, :email, :pass, :name, :role, :fid)`,
-      [id, email, hashedPassword, fullName, role, fId],
+      `INSERT INTO users (id, email, password_hash, name, role, family_id, is_verified, verification_code) VALUES (:id, :email, :pass, :name, :role, :fid, 0, :vcode)`,
+      [id, email, hashedPassword, fullName, role, fId, verificationCode],
       { autoCommit: true }
     );
 
-    // Send Welcome Email
+    // Send Welcome Email with Verification Code
     try {
       if (process.env.RESEND_API_KEY) {
         await resendClient.emails.send({
           from: `MyAsset Security <${getEmailSender()}>`,
           to: email,
-          subject: 'Welcome to MyAsset Registry',
+          subject: 'Verify Your MyAsset Account',
           html: `<div style="font-family: sans-serif; padding: 20px;">
                   <h2 style="color: #6200ee;">Welcome to MyAsset, ${fullName}!</h2>
-                  <p>Your global asset registry account has been successfully created.</p>
-                  <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                  <p>Your global asset registry account has been successfully created. Please verify your email to continue.</p>
+                  <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
+                    <p style="margin-bottom: 10px; font-weight: bold; color: #666;">YOUR VERIFICATION CODE</p>
+                    <h1 style="font-size: 3em; letter-spacing: 10px; color: #6200ee; margin: 0;">${verificationCode}</h1>
+                  </div>
+                  <div style="background: #eee; padding: 15px; border-radius: 8px; margin: 20px 0;">
                     <p style="margin: 5px 0;"><strong>Registry ID:</strong> <span style="color: #6200ee;">${fId}</span></p>
                     <p style="margin: 5px 0;"><strong>Role:</strong> ${role}</p>
-                    <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
                   </div>
-                  <p>You can now log in to track your estate and manage allocations.</p>
+                  <p>Enter this code in the application to activate your account.</p>
                 </div>`
         });
-        console.log('Welcome email sent to:', email);
+        console.log('Verification email sent to:', email);
       }
     } catch (emailErr) {
       console.error('Welcome email failed:', emailErr);
     }
 
-    res.json({ success: true });
+    res.json({ success: true, message: 'Verification code sent to your email.' });
   } catch (err) {
     console.error('API Error:', err);
     res.status(500).json({ error: 'Operation failed.' });
@@ -362,7 +372,7 @@ app.post('/api/auth/google', async (req, res) => {
       const fId = requestedFamilyId || (role === 'ADMIN' ? Math.random().toString(36).substring(7).toUpperCase() : '');
       
       await connection.execute(
-        `INSERT INTO users (id, email, name, role, family_id) VALUES (:id, :email, :name, :role, :fid)`,
+        `INSERT INTO users (id, email, name, role, family_id, is_verified) VALUES (:id, :email, :name, :role, :fid, 1)`,
         [id, email, name, role, fId],
         { autoCommit: true }
       );
@@ -407,6 +417,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     const user = result.rows[0];
     if (user) {
+      if (user.IS_VERIFIED === 0) {
+        return res.status(403).json({ error: 'Please verify your email address before logging in.', needsVerification: true, email: user.EMAIL });
+      }
       console.log('User found:', user.EMAIL);
       const isMatch = await bcrypt.compare(password, user.PASSWORD_HASH);
       console.log('Password match:', isMatch);
@@ -422,6 +435,38 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(401).json({ error: 'Invalid credentials' });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// Verify Email
+app.post('/api/auth/verify-email', async (req, res) => {
+  const { email, code } = req.body;
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const result: any = await connection.execute(
+      `SELECT * FROM users WHERE LOWER(email) = LOWER(:email) AND verification_code = :code`,
+      { email, code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid verification code.' });
+    }
+
+    await connection.execute(
+      `UPDATE users SET is_verified = 1, verification_code = NULL WHERE LOWER(email) = LOWER(:email)`,
+      { email },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: 'Email verified successfully! You can now login.' });
+  } catch (err) {
+    console.error('Verification failed:', err);
+    res.status(500).json({ error: 'Verification failed.' });
   } finally {
     if (connection) await connection.close();
   }
