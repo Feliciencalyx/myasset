@@ -64,7 +64,12 @@ async function initializeDatabase() {
     await oracledb.createPool(dbConfig);
     console.log('Successfully created Oracle Database Pool');
 
-    const connection = await oracledb.getConnection();
+    // Force a 25-second timeout for the initial connection
+    const connection = await Promise.race([
+      oracledb.getConnection(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('DATABASE_CONNECTION_TIMEOUT_25S')), 25000))
+    ]) as oracledb.Connection;
+
     console.log('Successfully acquired connection from pool');
     try {
       await connection.execute(`
@@ -173,9 +178,12 @@ async function initializeDatabase() {
     } finally {
       await connection.close();
     }
-  } catch (err) {
-    console.error('Database Initialization Error:', err);
-    throw err;
+  } catch (err: any) {
+    console.error('CRITICAL: Database Initialization Error:', err.message);
+    if (err.message.includes('ORA-12170')) console.error('HINT: Network Timeout. Check Oracle ACL / Firewall.');
+    if (err.message.includes('ORA-01017')) console.error('HINT: Invalid Credentials. Check ORACLE_USER and ORACLE_PASSWORD.');
+    if (err.message.includes('NJS-040')) console.error('HINT: Connection Pool Timeout. The database might be sleeping or unreachable.');
+    poolInitialized = false;
   }
 }
 
