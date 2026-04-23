@@ -54,7 +54,8 @@ const getEmailSender = () => process.env.EMAIL_SENDER || 'onboarding@resend.dev'
 const dbConfig = {
   user: process.env.ORACLE_USER || 'system',
   password: process.env.ORACLE_PASSWORD || 'mine',
-  connectString: process.env.ORACLE_CONN_STRING || 'localhost:1521/FREE'
+  connectString: process.env.ORACLE_CONN_STRING || 'localhost:1521/FREE',
+  queueTimeout: 120000
 };
 
 async function initializeDatabase() {
@@ -64,8 +65,8 @@ async function initializeDatabase() {
     console.log('Successfully created Oracle Database Pool');
 
     const connection = await oracledb.getConnection();
+    console.log('Successfully acquired connection from pool');
     try {
-      // Create Tables if not exists
       await connection.execute(`
         BEGIN
           EXECUTE IMMEDIATE 'CREATE TABLE users (
