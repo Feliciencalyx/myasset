@@ -438,7 +438,8 @@ export default function AuthScreens() {
             {isLogin ? t('joinRegistry') : t('alreadyRegistered')}
           </button>
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
