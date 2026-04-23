@@ -38,10 +38,43 @@ function AuthRouter() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[10px] font-black text-primary uppercase tracking-widest">Synchronizing Estate Registry...</p>
+      <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+        {/* Premium Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+          style={{ backgroundImage: 'url("/assets/loading_bg.png")', filter: 'brightness(0.3)' }}
+        />
+        
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-surface/80 to-surface" />
+
+        <div className="relative flex flex-col items-center gap-8 text-center max-w-sm">
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative"
+          >
+            <div className="w-24 h-24 border-[1px] border-primary/20 rounded-full flex items-center justify-center backdrop-blur-xl">
+              <div className="w-20 h-20 border-[1px] border-primary/40 rounded-full animate-ping absolute opacity-20" />
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <Map className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-black text-primary font-headline tracking-tighter uppercase">MyAsset</h1>
+            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.3em] opacity-60">Synchronizing Global Estate...</p>
+          </div>
+
+          <div className="w-48 h-[2px] bg-outline-variant/30 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: '100%' }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+              className="w-full h-full bg-gradient-to-r from-transparent via-primary to-transparent"
+            />
+          </div>
         </div>
       </div>
     );
