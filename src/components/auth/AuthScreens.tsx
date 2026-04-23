@@ -175,13 +175,13 @@ export default function AuthScreens() {
           </button>
           
           <div className="absolute top-full right-0 mt-2 w-32 py-2 bg-surface-container-highest border-[1px] border-outline-variant/30 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all z-50 backdrop-blur-xl">
-            {['EN', 'FR', 'RW'].map((lang) => (
+            {['en', 'fr', 'rw'].map((lang) => (
               <button
                 key={lang}
                 onClick={() => setLanguage(lang as any)}
                 className={`w-full px-4 py-2 text-left text-[10px] font-bold tracking-widest uppercase hover:bg-primary/10 transition-colors ${language === lang ? 'text-primary' : 'text-on-surface'}`}
               >
-                {lang === 'EN' ? 'English' : lang === 'FR' ? 'Français' : 'Kinyarwanda'}
+                {lang === 'en' ? 'English' : lang === 'fr' ? 'Français' : 'Kinyarwanda'}
               </button>
             ))}
           </div>
