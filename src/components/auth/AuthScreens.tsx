@@ -159,13 +159,18 @@ export default function AuthScreens() {
     setError('');
     setLoading(true);
     try {
-      const result = await signInWithGoogle();
-      const token = await result.user.getIdToken();
+      const user = await signInWithGoogle();
+      const token = await user.getIdToken();
       
       const response = await fetch(`${API_BASE}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, email: result.user.email })
+        body: JSON.stringify({ 
+          token, 
+          email: user.email,
+          role: isLogin ? undefined : role,
+          familyId: isLogin ? undefined : familyId
+        })
       });
 
       const data = await response.json();

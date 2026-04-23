@@ -325,7 +325,7 @@ app.post('/api/auth/register', async (req, res) => {
 
 // Google Auth
 app.post('/api/auth/google', async (req, res) => {
-  const { token, email } = req.body;
+  const { token, email, role: requestedRole, familyId: requestedFamilyId } = req.body;
   let connection;
   try {
     // In a real production app, we would verify the Firebase token here.
@@ -345,11 +345,25 @@ app.post('/api/auth/google', async (req, res) => {
       // Create new user if they don't exist
       const id = Date.now().toString();
       const name = email.split('@')[0];
-      const familyId = Math.random().toString(36).substring(7).toUpperCase();
+      const role = requestedRole || 'USER';
+
+      // If joining as a USER, verify familyId
+      if (role === 'USER' && requestedFamilyId) {
+        const checkFid: any = await connection.execute(
+          `SELECT COUNT(*) as count FROM users WHERE family_id = :fid`,
+          [requestedFamilyId]
+        );
+        const count = checkFid.rows[0] ? (checkFid.rows[0][0] || checkFid.rows[0].COUNT) : 0;
+        if (count === 0) {
+          return res.status(400).json({ error: 'Invalid Family Estate ID. Please check with your household administrator.' });
+        }
+      }
+
+      const fId = requestedFamilyId || (role === 'ADMIN' ? Math.random().toString(36).substring(7).toUpperCase() : '');
       
       await connection.execute(
-        `INSERT INTO users (id, email, name, role, family_id) VALUES (:id, :email, :name, 'USER', :fid)`,
-        [id, email, name, familyId],
+        `INSERT INTO users (id, email, name, role, family_id) VALUES (:id, :email, :name, :role, :fid)`,
+        [id, email, name, role, fId],
         { autoCommit: true }
       );
       
