@@ -50,6 +50,24 @@ app.use('/api/auth/', limiter);
 let resendClient = new Resend(process.env.RESEND_API_KEY || 'no-key-yet');
 const getEmailSender = () => process.env.EMAIL_SENDER || 'onboarding@resend.dev';
 
+// Activity Logger
+async function createNotification(userId: string, familyId: string, type: string, message: string) {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    await connection.execute(
+      `INSERT INTO notifications (id, user_id, family_id, type, message) VALUES (:id, :uid, :fid, :type, :msg)`,
+      { id: Date.now().toString() + Math.random().toString(36).substring(7), uid: userId, fid: familyId, type, msg: message },
+      { autoCommit: true }
+    );
+  } catch (err) {
+    console.error('Failed to create notification:', err);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
 const dbConfig = {
   user: process.env.ORACLE_USER || 'system',
   password: process.env.ORACLE_PASSWORD || 'mine',
@@ -121,6 +139,15 @@ async function initializeDatabase() {
         is_verified NUMBER(1) DEFAULT 0,
         verification_code VARCHAR2(10)
       )`,
+      `CREATE TABLE notifications (
+        id VARCHAR2(255) PRIMARY KEY,
+        user_id VARCHAR2(255),
+        family_id VARCHAR2(255),
+        type VARCHAR2(50),
+        message VARCHAR2(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_read NUMBER(1) DEFAULT 0
+      )`,
       `CREATE TABLE land_assets (
         id VARCHAR2(255) PRIMARY KEY,
         upi VARCHAR2(255),
@@ -174,9 +201,23 @@ async function initializeDatabase() {
       }
     }
 
-    // Migrations for verification columns
     try { await connection.execute(`ALTER TABLE users ADD is_verified NUMBER(1) DEFAULT 0`); } catch(e) {}
     try { await connection.execute(`ALTER TABLE users ADD verification_code VARCHAR2(10)`); } catch(e) {}
+    
+    // Notifications Table Migration
+    try {
+      await connection.execute(`
+        CREATE TABLE notifications (
+          id VARCHAR2(255) PRIMARY KEY,
+          user_id VARCHAR2(255),
+          family_id VARCHAR2(255),
+          type VARCHAR2(50),
+          message VARCHAR2(500),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_read NUMBER(1) DEFAULT 0
+        )
+      `);
+    } catch(e) {}
 
     console.log('Database tables verified/created');
   } catch (err: any) {
@@ -534,6 +575,9 @@ app.put('/api/auth/profile', authenticateToken, async (req: any, res) => {
     if (user.PHOTO_URL) {
       finalPhotoUrl = await user.PHOTO_URL.getData();
     }
+    
+    // Log Activity
+    await createNotification(req.user.userId, req.user.familyId, 'PROFILE_UPDATE', `Updated profile information for ${fullName}`);
 
     res.json({ user: { id: user.ID, email: user.EMAIL, fullName: user.NAME, role: user.ROLE, familyId: user.FAMILY_ID, photoUrl: finalPhotoUrl } });
   } catch (err) {
@@ -718,6 +762,9 @@ app.post('/api/assets/land', authenticateToken, authorizeAdmin, async (req: any,
       },
       { autoCommit: true }
     );
+
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_CREATED', `Added new Land Asset: ${asset.title} (UPI: ${asset.upi})`);
+
     res.json({ id, ...asset });
   } catch (err: any) { res.status(500).json({ error: 'Asset creation failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -743,6 +790,9 @@ app.put('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req: a
       },
       { autoCommit: true }
     );
+
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_UPDATED', `Updated Land Asset: ${asset.title}`);
+
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Update failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -753,6 +803,9 @@ app.delete('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req
     const p = await getPool();
     connection = await p.getConnection();
     await connection.execute(`DELETE FROM land_assets WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
+    
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_DELETED', `Removed a land asset from the registry`);
+
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -786,6 +839,9 @@ app.post('/api/assets/residential', authenticateToken, authorizeAdmin, async (re
       },
       { autoCommit: true }
     );
+
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_CREATED', `Added new Residential Property: ${asset.name}`);
+
     res.json({ id, ...asset });
   } catch (err: any) { res.status(500).json({ error: 'Asset creation failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -812,6 +868,9 @@ app.put('/api/assets/residential/:id', authenticateToken, authorizeAdmin, async 
       },
       { autoCommit: true }
     );
+
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_UPDATED', `Updated Property Details: ${asset.name}`);
+
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Update failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -822,6 +881,9 @@ app.delete('/api/assets/residential/:id', authenticateToken, authorizeAdmin, asy
     const p = await getPool();
     connection = await p.getConnection();
     await connection.execute(`DELETE FROM residential_assets WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
+    
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_DELETED', `Removed a residential property from the registry`);
+
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -854,6 +916,9 @@ app.post('/api/assets/vehicles', authenticateToken, authorizeAdmin, async (req: 
       },
       { autoCommit: true }
     );
+
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_CREATED', `Registered new Vehicle: ${v.model} (${v.reg})`);
+
     res.json({ id, ...v });
   } catch (err: any) { res.status(500).json({ error: 'Vehicle creation failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -864,6 +929,9 @@ app.delete('/api/assets/vehicles/:id', authenticateToken, authorizeAdmin, async 
     const p = await getPool();
     connection = await p.getConnection();
     await connection.execute(`DELETE FROM vehicles WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
+    
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_DELETED', `Removed a vehicle from the active fleet`);
+
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -919,12 +987,56 @@ app.post('/api/family/members', authenticateToken, authorizeAdmin, async (req: a
       { autoCommit: true }
     );
 
+    await createNotification(req.user.userId, req.user.familyId, 'USER_ADDED', `Added new family member: ${fullName}`);
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add member.' });
   } finally {
     if (connection) await connection.close();
   }
+});// Notifications API
+app.get('/api/notifications', authenticateToken, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const result: any = await connection.execute(
+      `SELECT n.*, u.name as user_name 
+       FROM notifications n
+       JOIN users u ON n.user_id = u.id
+       WHERE n.family_id = :fid
+       ORDER BY n.created_at DESC`,
+      [req.user.familyId || ''],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 50 }
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Fetch failed.' });
+  } finally {
+    if (connection) await connection.close();
+  }
 });
 
+app.post('/api/notifications/read', authenticateToken, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    await connection.execute(
+      `UPDATE notifications SET is_read = 1 WHERE family_id = :fid`,
+      [req.user.familyId || ''],
+      { autoCommit: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed.' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
 
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

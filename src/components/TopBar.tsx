@@ -1,8 +1,9 @@
-import { Search, Bell, Settings, Shield, User, LogOut, Check, Info, Globe, Menu } from 'lucide-react';
+import { Search, Bell, Settings, Shield, User, LogOut, Check, Info, Globe, Menu, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE } from '../config';
 
 interface TopBarProps {
   setActiveTab: (tab: string) => void;
@@ -14,12 +15,42 @@ export default function TopBar({ setActiveTab, activeTab, onOpenSidebar }: TopBa
   const { profile, isAdmin, logout } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  const notifications = [
-    { id: 1, title: 'Land Title Verified', detail: 'UPI 1/03/04 - System Sync Complete', type: 'success', time: '2m ago' },
-    { id: 2, title: 'Security Alert', detail: 'New Login from Kigali - Safari Browser', type: 'info', time: '1h ago' },
-    { id: 3, title: 'Insurance Expiry', detail: 'Toyota Land Cruiser - 14 Days Remaining', type: 'warning', time: '4h ago' },
-  ];
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/notifications`, {
+        //@ts-ignore
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAllAsRead = async () => {
+    try {
+      await fetch(`${API_BASE}/api/notifications/read`, {
+        method: 'POST',
+        //@ts-ignore
+        credentials: 'include'
+      });
+      fetchNotifications();
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
+  };
 
   const toggleLanguage = () => {
     const langs: ('en' | 'rw' | 'fr')[] = ['en', 'rw', 'fr'];
@@ -27,6 +58,8 @@ export default function TopBar({ setActiveTab, activeTab, onOpenSidebar }: TopBa
     const nextIndex = (currentIndex + 1) % langs.length;
     setLanguage(langs[nextIndex]);
   };
+
+  const unreadCount = notifications.filter(n => n.IS_READ === 0).length;
 
   return (
     <nav className="fixed top-0 right-0 left-0 lg:left-64 z-50 bg-surface/80 backdrop-blur-xl flex justify-between items-center px-4 md:px-8 py-4 border-b border-outline-variant/10">
@@ -85,11 +118,16 @@ export default function TopBar({ setActiveTab, activeTab, onOpenSidebar }: TopBa
 
           <div className="relative">
             <button 
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                if (!showNotifications) fetchNotifications();
+              }}
               className={`p-2 transition-all duration-300 rounded-full relative ${showNotifications ? 'bg-primary text-white shadow-lg' : 'hover:bg-surface-container-low text-on-surface-variant'}`}
             >
               <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error border-2 border-surface rounded-full"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error border-2 border-surface rounded-full"></span>
+              )}
             </button>
 
             <AnimatePresence>
@@ -100,27 +138,59 @@ export default function TopBar({ setActiveTab, activeTab, onOpenSidebar }: TopBa
                   exit={{ opacity: 0, y: 15, scale: 0.95 }}
                   className="absolute top-14 right-0 w-80 bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/20 overflow-hidden z-[60]"
                 >
-                  <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
-                    <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{t('notificationCenter')}</h4>
-                    <span className="text-[8px] font-black bg-surface-container-low px-2 py-1 rounded text-outline">{notifications.length} New</span>
+                  <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/50">
+                    <div>
+                      <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{t('notificationCenter')}</h4>
+                      <p className="text-[8px] font-bold text-outline/60 mt-1 uppercase tracking-widest">Recent Activity</p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={markAllAsRead}
+                        className="text-[8px] font-black bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 transition-all uppercase tracking-widest"
+                      >
+                        Clear All
+                      </button>
+                    )}
                   </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.map((n) => (
-                      <div key={n.id} className="p-5 border-b border-outline-variant/5 hover:bg-surface-container-low/30 transition-colors cursor-pointer group">
-                        <div className="flex gap-4">
-                           <div className={`mt-1 p-1.5 rounded-lg shrink-0 ${n.type === 'success' ? 'bg-emerald-100 text-emerald-600' : n.type === 'info' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
-                            {n.type === 'success' ? <Check size={12} /> : <Info size={12} />}
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs font-black text-primary font-headline leading-tight">{n.title}</p>
-                            <p className="text-[10px] text-on-surface-variant/70 leading-snug">{n.detail}</p>
-                            <p className="text-[9px] text-outline/50 font-bold uppercase tracking-tighter pt-1">{n.time}</p>
+                  <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                    {notifications.length === 0 ? (
+                      <div className="p-10 text-center space-y-4">
+                        <div className="w-12 h-12 bg-surface-container-high rounded-2xl flex items-center justify-center mx-auto opacity-20">
+                          <Bell size={24} />
+                        </div>
+                        <p className="text-[10px] font-black text-outline uppercase tracking-widest">No recent activity</p>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div key={n.ID} className={`p-5 border-b border-outline-variant/5 hover:bg-surface-container-low/30 transition-colors cursor-pointer group ${n.IS_READ === 0 ? 'bg-primary/[0.02]' : ''}`}>
+                          <div className="flex gap-4">
+                             <div className={`mt-1 p-2 rounded-xl shrink-0 ${
+                               n.TYPE === 'ASSET_CREATED' ? 'bg-emerald-100 text-emerald-600' : 
+                               n.TYPE === 'ASSET_DELETED' ? 'bg-error/10 text-error' :
+                               n.TYPE === 'PROFILE_UPDATE' ? 'bg-blue-100 text-blue-600' : 'bg-primary/10 text-primary'
+                             }`}>
+                              {n.TYPE === 'ASSET_CREATED' ? <Check size={14} /> : <Info size={14} />}
+                            </div>
+                            <div className="space-y-1 flex-1">
+                              <div className="flex justify-between items-start">
+                                <p className="text-[10px] font-black text-primary uppercase tracking-wider">{n.TYPE?.replace('_', ' ')}</p>
+                                <div className="flex items-center gap-1 text-[8px] text-outline/40 font-bold uppercase">
+                                  <Clock size={8} />
+                                  {new Date(n.CREATED_AT).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              <p className="text-xs font-bold text-on-surface leading-tight">{n.MESSAGE}</p>
+                              <p className="text-[9px] text-outline/60 font-medium">by {n.USER_NAME}</p>
+                            </div>
+                            {n.IS_READ === 0 && (
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 shadow-sm shadow-primary/40"></div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
-                  <button className="w-full py-4 text-[9px] font-black text-primary uppercase tracking-widest hover:bg-surface-container-low transition-colors">
+                  <button className="w-full py-4 text-[9px] font-black text-primary uppercase tracking-widest hover:bg-surface-container-low transition-colors border-t border-outline-variant/10">
                     {t('viewAllActivity')}
                   </button>
                 </motion.div>
