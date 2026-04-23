@@ -14,7 +14,7 @@ export default function Profile() {
   const [error, setError] = useState<string | null>(null);
 
   // Form State
-  const [name, setName] = useState(profile?.name || '');
+  const [fullName, setFullName] = useState(profile?.fullName || '');
   const [email, setEmail] = useState(profile?.email || '');
   const [photoUrl, setPhotoUrl] = useState(profile?.photoUrl || '');
 
@@ -22,7 +22,7 @@ export default function Profile() {
     setIsSaving(true);
     setError(null);
     try {
-      await updateProfile({ name, email, photoUrl });
+      await updateProfile({ name: fullName, email, photoUrl });
       setIsEditing(false);
     } catch (err: any) {
       setError(err.message);
@@ -32,7 +32,7 @@ export default function Profile() {
   };
 
   const handleCancel = () => {
-    setName(profile?.name || '');
+    setFullName(profile?.fullName || '');
     setEmail(profile?.email || '');
     setPhotoUrl(profile?.photoUrl || '');
     setIsEditing(false);
@@ -101,8 +101,8 @@ export default function Profile() {
                     <label className="text-[9px] font-black text-outline uppercase tracking-widest px-1">Display Name</label>
                     <input 
                       type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
                       className="text-2xl font-black text-primary font-headline tracking-tighter w-full bg-surface-container-low px-4 py-2 rounded-xl outline-none border-b-2 border-primary/20 focus:border-primary transition-all"
                       placeholder="Enter your name"
                     />
@@ -113,7 +113,7 @@ export default function Profile() {
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-3xl font-black text-primary font-headline tracking-tighter">{profile?.name}</h3>
+                  <h3 className="text-3xl font-black text-primary font-headline tracking-tighter">{profile?.fullName}</h3>
                   <p className="text-xs text-outline font-black uppercase tracking-widest mt-1 flex items-center gap-2">
                     <Shield size={14} className="text-primary/40" /> {profile?.role} {t('stewardshipRole')}
                   </p>

@@ -14,7 +14,7 @@ export default function AuthScreens() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'USER'>('USER');
   const [familyId, setFamilyId] = useState('');
   const [error, setError] = useState('');
@@ -57,7 +57,7 @@ export default function AuthScreens() {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const body = isLogin 
         ? { email, password } 
-        : { email, password, name, role, familyId };
+        : { email, password, fullName, role, familyId };
 
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
@@ -298,8 +298,8 @@ export default function AuthScreens() {
                   <input 
                     type="text" 
                     placeholder="Full Name" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     className="w-full pl-12 pr-4 py-4 bg-surface rounded-2xl border border-outline-variant/30 outline-none focus:border-primary transition-all text-sm"
                   />
                 </div>
