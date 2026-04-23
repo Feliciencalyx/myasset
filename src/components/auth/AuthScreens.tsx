@@ -1,14 +1,16 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Mail, Lock, User, ArrowRight, AlertCircle, Building2 } from 'lucide-react';
+import { Shield, Mail, Lock, User, ArrowRight, AlertCircle, Building2, Sun, Moon, Globe, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 import { signInWithGoogle } from '../../lib/firebase';
 import { API_BASE } from '../../config';
 
 export default function AuthScreens() {
   const { setAuthData } = useAuth();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -161,21 +163,56 @@ export default function AuthScreens() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-from)_0%,_transparent_50%)] from-primary/5">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-surface-container-lowest rounded-[3rem] p-12 shadow-2xl border border-outline-variant/10"
-      >
-        <div className="flex flex-col items-center mb-10 text-center">
-          <div className="w-16 h-16 bg-primary rounded-[1.5rem] flex items-center justify-center text-white mb-6 shadow-xl shadow-primary/20">
-            <Building2 size={32} />
+    <div className="min-h-screen bg-surface flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Top Bar Controls */}
+      <div className="absolute top-8 right-8 flex items-center gap-4 z-50">
+        {/* Language Switcher */}
+        <div className="relative group">
+          <button className="flex items-center gap-2 px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest rounded-full border-[1px] border-outline-variant/30 transition-all text-on-surface text-[10px] font-bold tracking-widest uppercase">
+            <Globe className="w-3 h-3 text-primary" />
+            {language}
+            <ChevronDown className="w-3 h-3 opacity-40" />
+          </button>
+          
+          <div className="absolute top-full right-0 mt-2 w-32 py-2 bg-surface-container-highest border-[1px] border-outline-variant/30 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all z-50 backdrop-blur-xl">
+            {['EN', 'FR', 'RW'].map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setLanguage(lang as any)}
+                className={`w-full px-4 py-2 text-left text-[10px] font-bold tracking-widest uppercase hover:bg-primary/10 transition-colors ${language === lang ? 'text-primary' : 'text-on-surface'}`}
+              >
+                {lang === 'EN' ? 'English' : lang === 'FR' ? 'Français' : 'Kinyarwanda'}
+              </button>
+            ))}
           </div>
-          <h1 className="text-4xl font-black text-primary font-headline tracking-tighter mb-2">MyAsset</h1>
-          <p className="text-sm text-outline font-medium">
-            {t('legacyTagline')}
-          </p>
         </div>
+
+        {/* Theme Toggle */}
+        <button 
+          onClick={toggleTheme}
+          className="p-3 bg-surface-container-high hover:bg-surface-container-highest rounded-full border-[1px] border-outline-variant/30 transition-all group"
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform" />
+          ) : (
+            <Moon className="w-4 h-4 text-blue-500 group-hover:-rotate-12 transition-transform" />
+          )}
+        </button>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-surface-container-low border-[1px] border-outline-variant/30 rounded-[2.5rem] p-10 shadow-2xl backdrop-blur-xl"
+        >
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="text-4xl font-black text-primary font-headline tracking-tighter mb-2">MyAsset</h1>
+            <p className="text-outline uppercase text-[10px] tracking-[0.3em] font-black">{isLogin ? t('loginTitle') : t('signupTitle')}</p>
+          </div>
 
         <div className="space-y-4 mb-8">
           <button 
