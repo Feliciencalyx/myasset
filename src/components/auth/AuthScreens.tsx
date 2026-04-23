@@ -217,8 +217,11 @@ export default function AuthScreens() {
 
       setAuthData(data.token, data.user);
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(err.message);
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Configuration Error: This domain is not authorized for Google Sign-in. Please contact the administrator to add this domain to the Firebase Console.');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setError('Could not connect to Google services. Please try again later.');
+        console.error('Firebase Auth Error:', err);
       }
     } finally {
       setLoading(false);
