@@ -58,17 +58,27 @@ const dbConfig = {
   queueTimeout: 120000
 };
 
-async function initializeDatabase() {
-  try {
-    // Create Connection Pool
-    await oracledb.createPool(dbConfig);
-    console.log('Successfully created Oracle Database Pool');
+let pool: oracledb.Pool | null = null;
 
-    // Force a 60-second timeout for the initial connection and table creation
-    const connection = await Promise.race([
-      oracledb.getConnection(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('DATABASE_CONNECTION_TIMEOUT_60S')), 60000))
-    ]) as oracledb.Connection;
+async function getPool() {
+  if (pool) return pool;
+  try {
+    pool = await oracledb.createPool(dbConfig);
+    console.log('Successfully created Oracle Database Pool');
+    return pool;
+  } catch (err) {
+    console.error('Failed to create pool:', err);
+    throw err;
+  }
+}
+
+async function initializeDatabase() {
+  if (poolInitialized) return;
+  
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
 
     console.log('Successfully acquired connection from pool');
     try {
@@ -258,7 +268,8 @@ app.post('/api/auth/register', async (req, res) => {
   const { email, password, fullName, role, familyId } = req.body;
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const hashedPassword = await bcrypt.hash(password, 10);
     const id = Date.now().toString();
     // Default family ID for admins if not provided
@@ -309,7 +320,8 @@ app.post('/api/auth/login', async (req, res) => {
   console.log('Login attempt for:', email);
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result: any = await connection.execute(
       `SELECT * FROM users WHERE LOWER(email) = LOWER(:email)`,
       [email],
@@ -342,7 +354,8 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result: any = await connection.execute(
       `SELECT id, email, name, role, family_id, photo_url FROM users WHERE id = :id`,
       [req.user.userId],
@@ -367,7 +380,8 @@ app.put('/api/auth/profile', authenticateToken, async (req: any, res) => {
   const { fullName, photoUrl } = req.body;
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     await connection.execute(
       `UPDATE users SET name = :name, photo_url = :photo WHERE id = :id`,
       { name: fullName, photo: { val: photoUrl || '', type: oracledb.DB_TYPE_CLOB }, id: req.user.userId },
@@ -403,7 +417,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
   const { email } = req.body;
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result: any = await connection.execute(
       `SELECT * FROM users WHERE LOWER(email) = LOWER(:email)`,
       [email],
@@ -512,7 +527,8 @@ app.post('/api/auth/confirm-reset', async (req, res) => {
 
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result: any = await connection.execute(
       `SELECT * FROM users WHERE LOWER(email) = LOWER(:email) AND reset_code = :code AND reset_expiry > CURRENT_TIMESTAMP`,
       { email, code },
@@ -543,7 +559,8 @@ app.post('/api/auth/confirm-reset', async (req, res) => {
 app.get('/api/assets/land', authenticateToken, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result = await connection.execute(`SELECT * FROM land_assets WHERE family_id = :fid`, [req.user.familyId || ''], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     res.json(result.rows);
   } catch (err: any) { res.status(500).json({ error: 'Fetch failed.' }); } finally { if (connection) await connection.close(); }
@@ -552,7 +569,8 @@ app.get('/api/assets/land', authenticateToken, async (req: any, res) => {
 app.post('/api/assets/land', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const asset = req.body;
     const id = Date.now().toString();
     await connection.execute(
@@ -572,7 +590,8 @@ app.post('/api/assets/land', authenticateToken, authorizeAdmin, async (req: any,
 app.put('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const asset = req.body;
     await connection.execute(
       `UPDATE land_assets SET 
@@ -596,7 +615,8 @@ app.put('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req: a
 app.delete('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     await connection.execute(`DELETE FROM land_assets WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }
@@ -605,7 +625,8 @@ app.delete('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req
 app.get('/api/assets/residential', authenticateToken, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result = await connection.execute(`SELECT * FROM residential_assets WHERE family_id = :fid`, [req.user.familyId || ''], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     res.json(result.rows);
   } catch (err: any) { res.status(500).json({ error: 'Fetch failed.' }); } finally { if (connection) await connection.close(); }
@@ -614,7 +635,8 @@ app.get('/api/assets/residential', authenticateToken, async (req: any, res) => {
 app.post('/api/assets/residential', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const asset = req.body;
     const id = Date.now().toString();
     await connection.execute(
@@ -636,7 +658,8 @@ app.post('/api/assets/residential', authenticateToken, authorizeAdmin, async (re
 app.put('/api/assets/residential/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const asset = req.body;
     await connection.execute(
       `UPDATE residential_assets SET 
@@ -661,7 +684,8 @@ app.put('/api/assets/residential/:id', authenticateToken, authorizeAdmin, async 
 app.delete('/api/assets/residential/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     await connection.execute(`DELETE FROM residential_assets WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }
@@ -670,7 +694,8 @@ app.delete('/api/assets/residential/:id', authenticateToken, authorizeAdmin, asy
 app.get('/api/assets/vehicles', authenticateToken, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const result = await connection.execute(`SELECT * FROM vehicles WHERE family_id = :fid`, [req.user.familyId || ''], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     res.json(result.rows);
   } catch (err: any) { res.status(500).json({ error: 'Fetch failed.' }); } finally { if (connection) await connection.close(); }
@@ -679,7 +704,8 @@ app.get('/api/assets/vehicles', authenticateToken, async (req: any, res) => {
 app.post('/api/assets/vehicles', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     const v = req.body;
     const id = Date.now().toString();
     await connection.execute(
