@@ -384,20 +384,26 @@ export default function AuthScreens() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <button 
-                        type="button"
-                        onClick={() => setRole('USER')}
-                        className={`py-4 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all ${role === 'USER' ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-outline-variant/30 text-outline'}`}
-                      >
-                        Family Member
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setRole('ADMIN')}
-                        className={`py-4 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all ${role === 'ADMIN' ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-outline-variant/30 text-outline'}`}
-                      >
-                        Estate Admin
-                      </button>
+                      <div className="space-y-2 text-center">
+                        <button 
+                          type="button"
+                          onClick={() => setRole('USER')}
+                          className={`w-full py-4 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all ${role === 'USER' ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-outline-variant/30 text-outline'}`}
+                        >
+                          Family Member
+                        </button>
+                        <p className="text-[8px] font-bold text-outline uppercase tracking-widest">Needs Estate ID</p>
+                      </div>
+                      <div className="space-y-2 text-center">
+                        <button 
+                          type="button"
+                          onClick={() => setRole('ADMIN')}
+                          className={`w-full py-4 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all ${role === 'ADMIN' ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-outline-variant/30 text-outline'}`}
+                        >
+                          Estate Admin
+                        </button>
+                        <p className="text-[8px] font-bold text-outline uppercase tracking-widest">Creates New ID</p>
+                      </div>
                     </div>
 
                     <AnimatePresence>

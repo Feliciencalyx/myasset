@@ -69,6 +69,21 @@ async function createNotification(userId: string, familyId: string, type: string
   }
 }
 
+async function generateUniqueFamilyId(connection: any): Promise<string> {
+  let id = '';
+  let exists = true;
+  while (exists) {
+    id = Math.random().toString(36).substring(7).toUpperCase();
+    const result: any = await connection.execute(
+      `SELECT COUNT(*) as count FROM users WHERE family_id = :id`,
+      [id]
+    );
+    const count = result.rows[0] ? (result.rows[0][0] || result.rows[0].COUNT) : 0;
+    if (count === 0) exists = false;
+  }
+  return id;
+}
+
 const dbConfig = {
   user: process.env.ORACLE_USER || 'system',
   password: process.env.ORACLE_PASSWORD || 'mine',
@@ -340,7 +355,10 @@ app.post('/api/auth/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const id = Date.now().toString();
-    const fId = familyId || (role === 'ADMIN' ? Math.random().toString(36).substring(7).toUpperCase() : '');
+    let fId = familyId;
+    if (role === 'ADMIN') {
+      fId = await generateUniqueFamilyId(connection);
+    }
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     
     await connection.execute(
@@ -421,7 +439,7 @@ app.post('/api/auth/google', async (req, res) => {
         }
       }
 
-      const fId = requestedFamilyId || (role === 'ADMIN' ? Math.random().toString(36).substring(7).toUpperCase() : '');
+      const fId = role === 'ADMIN' ? await generateUniqueFamilyId(connection) : (requestedFamilyId || '');
       
       await connection.execute(
         `INSERT INTO users (id, email, name, role, family_id, is_verified) VALUES (:id, :email, :name, :role, :fid, 1)`,
