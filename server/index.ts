@@ -17,7 +17,7 @@ dotenv.config();
 
 const app = express();
 app.use(compression()); // Compress all responses
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3005;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET || 'estate-master-key-2026';
 
@@ -269,6 +269,16 @@ async function startServer() {
   }
 }
 
+// Global Error Handler
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('Unhandled Server Error:', err);
+  res.status(500).json({ 
+    error: 'A server-side exception occurred.',
+    message: err.message,
+    stack: NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 // Serve static files in production
 if (NODE_ENV === 'production') {
   const distPath = path.join(process.cwd(), 'dist');
@@ -462,13 +472,18 @@ app.post('/api/auth/login', async (req, res) => {
       if (user.IS_VERIFIED === 0) {
         return res.status(403).json({ error: 'Please verify your email address before logging in.', needsVerification: true, email: user.EMAIL });
       }
+      
+      if (!user.PASSWORD_HASH) {
+        return res.status(401).json({ error: 'This account is linked with Google. Please use the "Continue with Gmail" button.' });
+      }
+
       console.log('User found:', user.EMAIL);
       const isMatch = await bcrypt.compare(password, user.PASSWORD_HASH);
       console.log('Password match:', isMatch);
       
       if (isMatch) {
         const token = jwt.sign({ userId: user.ID, email: user.EMAIL, role: user.ROLE, familyId: user.FAMILY_ID }, JWT_SECRET, { expiresIn: '24h' });
-        res.cookie('token', token, { httpOnly: true, secure: NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('token', token, { httpOnly: true, secure: NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
         return res.json({ user: { id: user.ID, email: user.EMAIL, fullName: user.NAME, role: user.ROLE, familyId: user.FAMILY_ID } });
       }
     } else {
@@ -1035,9 +1050,4 @@ app.post('/api/notifications/read', authenticateToken, async (req: any, res) => 
   } finally {
     if (connection) await connection.close();
   }
-});
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
 });
