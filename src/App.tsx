@@ -36,7 +36,7 @@ export default function App() {
 }
 
 function AuthRouter() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, slowLoading } = useAuth();
   const { t } = useLanguage();
 
   if (loading) {
@@ -70,6 +70,15 @@ function AuthRouter() {
             <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.3em] opacity-60">
               {t('synchronizingEstate')}
             </p>
+            {slowLoading && (
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[9px] text-primary/60 font-bold uppercase tracking-widest mt-4 animate-pulse"
+              >
+                Oracle Cloud database is waking up...
+              </motion.p>
+            )}
           </div>
 
           <div className="w-48 h-[2px] bg-outline-variant/30 rounded-full overflow-hidden">

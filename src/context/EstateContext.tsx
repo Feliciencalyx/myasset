@@ -83,6 +83,10 @@ export function EstateProvider({ children }: { children: ReactNode }) {
 
   const fetchAssets = async () => {
     if (!user) return;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for data
+
     try {
       // Try to load from cache first for instant UI
       const cached = sessionStorage.getItem(`assets_${user.id}`);
@@ -92,12 +96,15 @@ export function EstateProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
 
+      const fetchOptions = { credentials: 'include' as const, signal: controller.signal };
+
       const [land, res, veh] = await Promise.all([
-        fetch(`${API_BASE}/api/assets/land`, { credentials: 'include' }).then(r => r.json()),
-        fetch(`${API_BASE}/api/assets/residential`, { credentials: 'include' }).then(r => r.json()),
-        fetch(`${API_BASE}/api/assets/vehicles`, { credentials: 'include' }).then(r => r.json())
+        fetch(`${API_BASE}/api/assets/land`, fetchOptions).then(r => r.json()),
+        fetch(`${API_BASE}/api/assets/residential`, fetchOptions).then(r => r.json()),
+        fetch(`${API_BASE}/api/assets/vehicles`, fetchOptions).then(r => r.json())
       ]);
 
+      clearTimeout(timeoutId);
       updateStates(land, res, veh);
       sessionStorage.setItem(`assets_${user.id}`, JSON.stringify({ land, res, veh }));
     } catch (err) {

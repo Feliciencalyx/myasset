@@ -50,29 +50,37 @@ app.use('/api/auth/', limiter);
 let resendClient = new Resend(process.env.RESEND_API_KEY || 'no-key-yet');
 const getEmailSender = () => process.env.EMAIL_SENDER || 'onboarding@resend.dev';
 
-// Oracle Database Configuration
 const dbConfig = {
   user: process.env.ORACLE_USER || 'system',
   password: process.env.ORACLE_PASSWORD || 'mine',
   connectString: process.env.ORACLE_CONN_STRING || 'localhost:1521/FREE',
-  poolMin: 2,
+  poolMin: 0,
   poolMax: 10,
-  poolIncrement: 2,
-  queueTimeout: 60000 // Reduced from 120s
+  poolIncrement: 1,
+  poolTimeout: 60, // Keep connections alive for 60s in the pool if warm
+  queueTimeout: 10000 // Fail faster if queue is full (10s)
 };
 
 let pool: oracledb.Pool | null = null;
+let poolPromise: Promise<oracledb.Pool> | null = null;
 
 async function getPool() {
   if (pool) return pool;
-  try {
-    pool = await oracledb.createPool(dbConfig);
-    console.log('Successfully created Oracle Database Pool');
-    return pool;
-  } catch (err) {
-    console.error('Failed to create pool:', err);
-    throw err;
-  }
+  if (poolPromise) return poolPromise;
+
+  poolPromise = (async () => {
+    try {
+      pool = await oracledb.createPool(dbConfig);
+      console.log('Successfully created Oracle Database Pool');
+      return pool;
+    } catch (err) {
+      poolPromise = null; // Allow retry on next request
+      console.error('Failed to create pool:', err);
+      throw err;
+    }
+  })();
+
+  return poolPromise;
 }
 
 async function initializeDatabase() {
@@ -83,134 +91,117 @@ async function initializeDatabase() {
     const p = await getPool();
     connection = await p.getConnection();
 
-    console.log('Successfully acquired connection from pool');
-    try {
-      await connection.execute(`
-        BEGIN
-          EXECUTE IMMEDIATE 'CREATE TABLE users (
-            id VARCHAR2(255) PRIMARY KEY,
-            email VARCHAR2(255) UNIQUE,
-            password_hash VARCHAR2(255),
-            name VARCHAR2(255),
-            role VARCHAR2(50),
-            family_id VARCHAR2(255),
-            photo_url CLOB,
-            reset_code VARCHAR2(10),
-            reset_expiry TIMESTAMP
-          )';
-        EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
-        END;
-      `);
+    console.log('Database connected. Checking schema...');
+    
+    // Check if the schema is already initialized by looking for the 'users' table
+    const tableCheck: any = await connection.execute(
+      `SELECT table_name FROM user_tables WHERE table_name = 'USERS'`
+    );
 
-      // Self-healing migration for photo_url to CLOB
-      try {
-        const res: any = await connection.execute(`SELECT photo_url FROM users FETCH FIRST 1 ROWS ONLY`);
-        if (res.metaData && res.metaData[0].fetchType !== oracledb.DB_TYPE_CLOB) {
-          console.warn('Migrating photo_url to CLOB...');
-          await connection.execute(`ALTER TABLE users RENAME COLUMN photo_url TO photo_url_old`);
-          await connection.execute(`ALTER TABLE users ADD photo_url CLOB`);
-          await connection.execute(`UPDATE users SET photo_url = photo_url_old`);
-          await connection.execute(`ALTER TABLE users DROP COLUMN photo_url_old`);
-        }
-      } catch(e) {}
-
-      await connection.execute(`
-        BEGIN
-          EXECUTE IMMEDIATE 'CREATE TABLE land_assets (
-            id VARCHAR2(255) PRIMARY KEY,
-            upi VARCHAR2(255),
-            title VARCHAR2(255),
-            address VARCHAR2(255),
-            zoning VARCHAR2(255),
-            master_plan VARCHAR2(255),
-            size_ha VARCHAR2(255),
-            purchase_date VARCHAR2(255),
-            expiry_date VARCHAR2(255),
-            status VARCHAR2(50),
-            valuation VARCHAR2(255),
-            lat NUMBER,
-            lng NUMBER,
-            family_id VARCHAR2(255)
-          )';
-        EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
-        END;
-      `);
-
-      await connection.execute(`
-        BEGIN
-          EXECUTE IMMEDIATE 'CREATE TABLE residential_assets (
-            id VARCHAR2(255) PRIMARY KEY,
-            name VARCHAR2(255),
-            location VARCHAR2(255),
-            status VARCHAR2(50),
-            tenant VARCHAR2(255),
-            lease_start VARCHAR2(255),
-            lease_end VARCHAR2(255),
-            monthly_rent VARCHAR2(255),
-            valuation VARCHAR2(255),
-            appreciation VARCHAR2(255),
-            img_url CLOB,
-            family_id VARCHAR2(255),
-            linked_upi VARCHAR2(255)
-          )';
-        EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
-        END;
-      `);
-
-      // Migration for valuation column
-      try {
-        await connection.execute(`ALTER TABLE residential_assets ADD valuation VARCHAR2(255)`);
-      } catch(e) {}
-      try {
-        await connection.execute(`ALTER TABLE residential_assets ADD linked_upi VARCHAR2(255)`);
-      } catch(e) {}
-
-      await connection.execute(`
-        BEGIN
-          EXECUTE IMMEDIATE 'CREATE TABLE vehicles (
-            id VARCHAR2(255) PRIMARY KEY,
-            model VARCHAR2(255),
-            reg VARCHAR2(255),
-            insurance_expiry VARCHAR2(255),
-            status VARCHAR2(50),
-            owner VARCHAR2(255),
-            location VARCHAR2(255),
-            last_service VARCHAR2(255),
-            img_url CLOB,
-            family_id VARCHAR2(255)
-          )';
-        EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;
-        END;
-      `);
-
-      // Migration for Reset Code columns
-      try { await connection.execute(`ALTER TABLE users ADD reset_code VARCHAR2(10)`); } catch(e) {}
-      try { await connection.execute(`ALTER TABLE users ADD reset_expiry TIMESTAMP`); } catch(e) {}
-
-      console.log('Database tables verified/created');
-    } finally {
-      await connection.close();
+    if (tableCheck.rows.length > 0) {
+      console.log('Schema already exists. Skipping full initialization.');
+      poolInitialized = true;
+      return;
     }
+
+    console.log('Initializing full schema...');
+    
+    // Create tables only if they don't exist
+    const tables = [
+      `CREATE TABLE users (
+        id VARCHAR2(255) PRIMARY KEY,
+        email VARCHAR2(255) UNIQUE,
+        password_hash VARCHAR2(255),
+        name VARCHAR2(255),
+        role VARCHAR2(50),
+        family_id VARCHAR2(255),
+        photo_url CLOB,
+        reset_code VARCHAR2(10),
+        reset_expiry TIMESTAMP
+      )`,
+      `CREATE TABLE land_assets (
+        id VARCHAR2(255) PRIMARY KEY,
+        upi VARCHAR2(255),
+        title VARCHAR2(255),
+        address VARCHAR2(255),
+        zoning VARCHAR2(255),
+        master_plan VARCHAR2(255),
+        size_ha VARCHAR2(255),
+        purchase_date VARCHAR2(255),
+        expiry_date VARCHAR2(255),
+        status VARCHAR2(50),
+        valuation VARCHAR2(255),
+        lat NUMBER,
+        lng NUMBER,
+        family_id VARCHAR2(255)
+      )`,
+      `CREATE TABLE residential_assets (
+        id VARCHAR2(255) PRIMARY KEY,
+        name VARCHAR2(255),
+        location VARCHAR2(255),
+        status VARCHAR2(50),
+        tenant VARCHAR2(255),
+        lease_start VARCHAR2(255),
+        lease_end VARCHAR2(255),
+        monthly_rent VARCHAR2(255),
+        valuation VARCHAR2(255),
+        appreciation VARCHAR2(255),
+        img_url CLOB,
+        family_id VARCHAR2(255),
+        linked_upi VARCHAR2(255)
+      )`,
+      `CREATE TABLE vehicles (
+        id VARCHAR2(255) PRIMARY KEY,
+        model VARCHAR2(255),
+        reg VARCHAR2(255),
+        insurance_expiry VARCHAR2(255),
+        status VARCHAR2(50),
+        owner VARCHAR2(255),
+        location VARCHAR2(255),
+        last_service VARCHAR2(255),
+        img_url CLOB,
+        family_id VARCHAR2(255)
+      )`
+    ];
+
+    for (const sql of tables) {
+      try {
+        await connection.execute(sql);
+      } catch (e: any) {
+        if (!e.message.includes('ORA-00955')) throw e; // Ignore if already exists
+      }
+    }
+
+    console.log('Database tables verified/created');
   } catch (err: any) {
     console.error('CRITICAL: Database Initialization Error:', err.message);
     if (err.message.includes('ORA-12170')) console.error('HINT: Network Timeout. Check Oracle ACL / Firewall.');
     if (err.message.includes('ORA-01017')) console.error('HINT: Invalid Credentials. Check ORACLE_USER and ORACLE_PASSWORD.');
     if (err.message.includes('NJS-040')) console.error('HINT: Connection Pool Timeout. The database might be sleeping or unreachable.');
     poolInitialized = false;
+  } finally {
+    if (connection) await connection.close();
   }
 }
 
 // Initialize Database and Start Server
-// Ensure pool is ready for serverless requests
 let poolInitialized = false;
+let initializing: Promise<void> | null = null;
+
 app.use('/api', async (req, res, next) => {
   if (!poolInitialized && !req.path.startsWith('/system/setup')) {
-    try {
-      await initializeDatabase();
-      poolInitialized = true;
-    } catch (err) {
-      console.error('Lazy Init Failed:', err);
+    if (!initializing) {
+      console.log(`Initial call to DB from: ${req.path}. Starting lazy init...`);
+      initializing = initializeDatabase().then(() => {
+        poolInitialized = true;
+        initializing = null;
+      }).catch(err => {
+        console.error('Lazy Init Failed:', err);
+        initializing = null;
+      });
     }
+    // Wait for initialization to complete before proceeding
+    await initializing;
   }
   next();
 });
@@ -429,18 +420,31 @@ app.get('/api/auth/me', authenticateToken, async (req: any, res) => {
     const p = await getPool();
     connection = await p.getConnection();
     const result: any = await connection.execute(
-      `SELECT id, email, name, role, family_id, photo_url FROM users WHERE id = :id`,
+      `SELECT id, email, name, role, family_id, DBMS_LOB.GETLENGTH(photo_url) as photo_len FROM users WHERE id = :id`,
       [req.user.userId],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
+    
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
     const user = result.rows[0];
-    // Convert CLOB to string if exists
     let photoUrl = '';
-    if (user.PHOTO_URL) {
-      photoUrl = await user.PHOTO_URL.getData();
+    
+    // Only fetch CLOB if it actually has data
+    if (user.PHOTO_LEN && user.PHOTO_LEN > 0) {
+      const fullUser: any = await connection.execute(
+        `SELECT photo_url FROM users WHERE id = :id`,
+        [req.user.userId],
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (fullUser.rows[0]?.PHOTO_URL) {
+        photoUrl = await fullUser.rows[0].PHOTO_URL.getData();
+      }
     }
+    
     res.json({ user: { id: user.ID, email: user.EMAIL, fullName: user.NAME, role: user.ROLE, familyId: user.FAMILY_ID, photoUrl } });
   } catch (err) {
+    console.error('Me endpoint failed:', err);
     res.status(500).json({ error: 'Fetch failed.' });
   } finally {
     if (connection) await connection.close();
@@ -798,7 +802,8 @@ app.post('/api/assets/vehicles', authenticateToken, authorizeAdmin, async (req: 
 app.delete('/api/assets/vehicles/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
   let connection;
   try {
-    connection = await oracledb.getConnection();
+    const p = await getPool();
+    connection = await p.getConnection();
     await connection.execute(`DELETE FROM vehicles WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: 'Deletion failed.' }); } finally { if (connection) await connection.close(); }

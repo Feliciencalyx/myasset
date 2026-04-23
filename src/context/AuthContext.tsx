@@ -16,6 +16,7 @@ interface AuthContextType {
   user: UserProfile | null;
   profile: UserProfile | null;
   loading: boolean;
+  slowLoading: boolean;
   logout: () => void;
   isAdmin: boolean;
   setAuthData: (token: string, user: UserProfile) => void;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slowLoading, setSlowLoading] = useState(false);
 
   const fetchCurrentUser = async () => {
     // Check cache for instant entry
@@ -37,22 +39,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
 
+    const controller = new AbortController();
+    const slowTimeoutId = setTimeout(() => setSlowLoading(true), 5000);
+    const timeoutId = setTimeout(() => {
+      console.warn("Auth request timed out. Database might be waking up.");
+      controller.abort();
+    }, 20000); // Increased to 20s for Oracle cold starts
+
     try {
       const response = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { 'Content-Type': 'application/json' },
         //@ts-ignore
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+      clearTimeout(slowTimeoutId);
+      setSlowLoading(false);
+      
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
         localStorage.setItem('user_profile', JSON.stringify(data.user));
-      } else if (response.status === 401) {
-        setUser(null);
-        localStorage.removeItem('user_profile');
+      } else {
+        if (response.status === 401) {
+          setUser(null);
+          localStorage.removeItem('user_profile');
+        }
+        // Even if not 401, we stop loading to show login screen or error
       }
-    } catch (e) {
-      console.error("Session restoration failed");
+    } catch (e: any) {
+      clearTimeout(slowTimeoutId);
+      setSlowLoading(false);
+      if (e.name === 'AbortError') {
+        console.error("Auth request aborted due to timeout");
+      } else {
+        console.error("Session restoration failed:", e);
+      }
+      // If we have a cached user, maybe keep it but let the user know?
+      // For now, we just stop the loader so the app doesn't hang
     } finally {
       setLoading(false);
     }
@@ -115,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, 
       profile: user, 
       loading, 
+      slowLoading,
       logout, 
       isAdmin, 
       refreshProfile,
