@@ -273,9 +273,24 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const p = await getPool();
     connection = await p.getConnection();
+
+    // Secure Household Entry Logic
+    if (role === 'USER') {
+      if (!familyId) return res.status(400).json({ error: 'Family Estate ID is required to join a household.' });
+      
+      const checkFid: any = await connection.execute(
+        `SELECT COUNT(*) as count FROM users WHERE family_id = :fid`,
+        [familyId]
+      );
+      // checkFid.rows[0].COUNT or similar depending on outFormat
+      const count = checkFid.rows[0] ? (checkFid.rows[0][0] || checkFid.rows[0].COUNT) : 0;
+      if (count === 0) {
+        return res.status(400).json({ error: 'Invalid Family Estate ID. Please check with your household administrator.' });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const id = Date.now().toString();
-    // Default family ID for admins if not provided
     const fId = familyId || (role === 'ADMIN' ? Math.random().toString(36).substring(7).toUpperCase() : '');
     
     await connection.execute(

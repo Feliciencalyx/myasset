@@ -320,6 +320,27 @@ export default function AuthScreens() {
                     Estate Admin
                   </button>
                 </div>
+
+                <AnimatePresence>
+                  {role === 'USER' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="relative"
+                    >
+                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
+                      <input 
+                        required
+                        type="text" 
+                        placeholder="Family Estate ID (e.g. U9PMC)" 
+                        value={familyId}
+                        onChange={(e) => setFamilyId(e.target.value.toUpperCase())}
+                        className="w-full pl-12 pr-4 py-4 bg-primary/5 rounded-2xl border-2 border-primary/20 outline-none focus:border-primary transition-all text-sm font-bold placeholder:text-primary/30"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
