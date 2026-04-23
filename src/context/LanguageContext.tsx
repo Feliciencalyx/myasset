@@ -69,7 +69,7 @@ const translations: Translations = {
   yearsRemaining: { en: 'Years Remaining', rw: 'Imyaka Isigaye', fr: 'Années Restantes' },
   parcelRegistry: { en: 'Rwanda Parcel Registry', rw: 'Ibitabo by’Ubutaka mu Rwanda', fr: 'Registre des Parcelles du Rwanda' },
   parcelDesc: { en: 'Click on a satellite coordinate to define your family asset. All points must be linked to a valid UPI.', rw: 'Kanda ku ikarita kugira ngo ugaragaze umutungo. Ahantu hose hagomba kuba hafite UPI iboneye.', fr: 'Cliquez sur une coordonnée satellite pour définir votre actif. Tous les points doivent être liés à un UPI valide.' },
-  masterPlanSync: { en: 'National Master Plan Compliance Sync', rw: 'Igereranya n’Igishushanyo Mbonera', fr: 'Synchro Plan Directeur National' },
+  masterPlanSyncFull: { en: 'National Master Plan Compliance Sync', rw: 'Igereranya n’Igishushanyo Mbonera', fr: 'Synchro Plan Directeur National' },
   masterPlanDesc: { en: 'Every asset registered in MyAsset is automatically cross-referenced with your regional Master Plan.', rw: 'Umutungo wose wanditse ugereranywa n’igishushanyo mbonera cy’akarere biherereyemo.', fr: 'Chaque actif est automatiquement comparé au plan directeur régional.' },
   browseMasterPlans: { en: 'Browse Open UPI Master Plans', rw: 'Reba Ibishushanyo Mbonera', fr: 'Parcourir les Plans Directeurs' },
   frameworkDesc: { en: 'Official Rwanda land usage framework for all provinces.', rw: 'Amategeko agenga ikoreshwa ry’ubutaka mu Rwanda mu ntara zose.', fr: 'Cadre officiel d’utilisation des terres pour toutes les provinces.' },
