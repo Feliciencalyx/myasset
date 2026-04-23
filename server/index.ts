@@ -492,16 +492,12 @@ app.post('/api/system/setup', async (req, res) => {
     }
 
     const lines = envContent.split('\n');
-    const newLines = lines.filter(line => !line.startsWith('EMAIL_USER=') && !line.startsWith('EMAIL_PASS='));
-    newLines.push(`EMAIL_USER="${email}"`);
-    newLines.push(`EMAIL_PASS="${pass}"`);
+    const newLines = lines.filter(line => !line.startsWith('RESEND_API_KEY=') && !line.startsWith('EMAIL_SENDER='));
+    newLines.push(`RESEND_API_KEY="${apiKey}"`);
+    if (sender) newLines.push(`EMAIL_SENDER="${sender}"`);
     
     await fs.promises.writeFile(envPath, newLines.join('\n').trim() + '\n');
     console.log('SYSTEM: .env updated via UI. Refreshing configuration...');
-    
-    // Proactively update process.env for the current session
-    process.env.EMAIL_USER = email;
-    process.env.EMAIL_PASS = pass;
     
     res.json({ success: true, message: 'System credentials saved to .env and active!' });
   } catch (err) {
