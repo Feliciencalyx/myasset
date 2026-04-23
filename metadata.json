@@ -1,0 +1,7 @@
+{
+  "name": "MyAsset",
+  "description": "Multi-generational family estate registry for tracking land (UPI), residential property leases, and vehicle assets across Rwanda.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

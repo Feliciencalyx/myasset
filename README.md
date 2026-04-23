@@ -1,2 +1,0 @@
-# myasset
-myasset system

@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and family associations",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "USER"] },
+        "familyId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "familyId"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "Family asset record (Land, Residential, Vehicle)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["LAND", "RESIDENTIAL", "VEHICLE"] },
+        "name": { "type": "string" },
+        "upi": { "type": "string" },
+        "location": { "type": "object" },
+        "details": { "type": "object" },
+        "documents": { "type": "array" },
+        "ownerId": { "type": "string" },
+        "familyId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "name", "familyId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Private user profiles"
+    },
+    "/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Shared family assets"
+    }
+  }
+}

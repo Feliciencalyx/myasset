@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { 
+      return isSignedIn() && (
+        request.auth.token.email_verified == true || 
+        request.auth.token.firebase.sign_in_provider == 'google.com' ||
+        request.auth.token.firebase.sign_in_provider == 'password'
+      ); 
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isSameFamily(familyId) {
+      return isSignedIn() && getUserData(request.auth.uid).familyId == familyId;
+    }
+
+    function isFamilyAdmin(familyId) {
+      return isSameFamily(familyId) && getUserData(request.auth.uid).role == 'ADMIN';
+    }
+
+    // Entity Validations
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'familyId']) 
+             && data.uid is string && data.uid == request.auth.uid 
+             && data.email is string && data.email.size() < 256
+             && data.role in ['ADMIN', 'USER']
+             && data.familyId is string && data.familyId.size() < 128;
+    }
+
+    function isValidAsset(data) {
+      return data.keys().hasAll(['type', 'name', 'familyId'])
+             && data.type in ['LAND', 'RESIDENTIAL', 'VEHICLE']
+             && data.name is string && data.name.size() < 256
+             && data.familyId is string && data.familyId.size() < 128;
+    }
+
+    // User Rules
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSameFamily(existing().familyId));
+      allow list: if isSignedIn() && existing().familyId == getUserData(request.auth.uid).familyId;
+      allow create: if isVerified() && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isVerified() && request.auth.uid == userId 
+                    && isValidUser(incoming())
+                    && incoming().role == existing().role
+                    && incoming().familyId == existing().familyId;
+    }
+
+    // Asset Rules
+    match /assets/{assetId} {
+      allow read: if isSameFamily(existing().familyId);
+      allow create: if isFamilyAdmin(incoming().familyId) && isValidAsset(incoming());
+      allow update: if isFamilyAdmin(existing().familyId) 
+                    && isValidAsset(incoming())
+                    && incoming().familyId == existing().familyId;
+      allow delete: if isFamilyAdmin(existing().familyId);
+    }
+  }
+}

@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@200;400;600;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Outfit", sans-serif;
+
+  --color-primary: #1A3C34; /* Heritage Green */
+  --color-primary-container: #E8F2EF;
+  --color-on-primary-container: #102621;
+  
+  --color-surface: #F9F8F6; /* Traditional Paper/Stone */
+  --color-surface-container-low: #F1EFE9;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-high: #E7E4DD;
+  --color-surface-container-highest: #DFDBD2;
+
+  --color-on-surface: #101414;
+  --color-on-surface-variant: #4A5452;
+
+  --color-tertiary: #A67C52; /* Burnished Gold */
+  --color-tertiary-container: #FFF7EE;
+  --color-on-tertiary-container: #5D432C;
+
+  --color-outline: #8E9B98;
+  --color-outline-variant: #D1D9D7;
+}
+
+/* Dark Mode Overrides */
+.dark {
+  --color-primary: #4ADE80; /* Vibrant Green for accessibility in dark mode */
+  --color-primary-container: #064E3B;
+  --color-on-primary-container: #D1FAE5;
+
+  --color-surface: #0A0F0E; /* Deep Obsidian */
+  --color-surface-container-low: #121A18;
+  --color-surface-container-lowest: #16211F;
+  --color-surface-container-high: #1D2D29;
+  --color-surface-container-highest: #243833;
+
+  --color-on-surface: #F1F5F9;
+  --color-on-surface-variant: #94A3B8;
+
+  --color-tertiary: #F59E0B; /* Amber/Gold */
+  --color-tertiary-container: #451A03;
+  --color-on-tertiary-container: #FEF3C7;
+
+  --color-outline: #475569;
+  --color-outline-variant: #334155;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans antialiased transition-colors duration-500;
+  }
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass-panel {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Smooth transiton for all elements */
+* {
+  @apply transition-colors duration-300;
+}
