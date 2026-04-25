@@ -53,8 +53,8 @@ async function createNotification(userId: string, familyId: string, type: string
     const p = await getPool();
     connection = await p.getConnection();
     await connection.execute(
-      `INSERT INTO notifications (id, user_id, family_id, type, message) VALUES (:id, :uid, :fid, :type, :msg)`,
-      { id: Date.now().toString() + Math.random().toString(36).substring(7), uid: userId, fid: familyId, type, msg: message },
+      `INSERT INTO notifications (id, user_id, family_id, type, message) VALUES (:nid, :uid, :fid, :ntype, :nmsg)`,
+      { nid: Date.now().toString() + Math.random().toString(36).substring(7), uid: userId, fid: familyId, ntype: type, nmsg: message },
       { autoCommit: true }
     );
   } catch (err) {
@@ -67,15 +67,22 @@ async function createNotification(userId: string, familyId: string, type: string
 async function generateUniqueFamilyId(connection: any): Promise<string> {
   let id = '';
   let exists = true;
-  while (exists) {
+  let attempts = 0;
+  console.log('Generating unique family ID...');
+  while (exists && attempts < 10) {
+    attempts++;
     id = Math.random().toString(36).substring(7).toUpperCase();
+    console.log(`Attempt ${attempts}: Checking ID ${id}`);
     const result: any = await connection.execute(
       `SELECT COUNT(*) as count FROM users WHERE family_id = :id`,
-      [id]
+      { id }
     );
-    const count = result.rows[0] ? (result.rows[0][0] || result.rows[0].COUNT) : 0;
-    if (count === 0) exists = false;
+    const row = result.rows[0];
+    const count = row ? (row[0] !== undefined ? row[0] : (row.COUNT !== undefined ? row.COUNT : (row.count !== undefined ? row.count : 0))) : 0;
+    console.log(`Count for ${id}: ${count}`);
+    if (Number(count) === 0) exists = false;
   }
+  console.log(`Generated family ID: ${id}`);
   return id;
 }
 
@@ -83,11 +90,11 @@ const dbConfig = {
   user: process.env.ORACLE_USER || 'system',
   password: process.env.ORACLE_PASSWORD || 'mine',
   connectString: process.env.ORACLE_CONN_STRING || 'localhost:1521/FREE',
-  poolMin: 0,
-  poolMax: 10,
-  poolIncrement: 1,
-  poolTimeout: 60,
-  queueTimeout: 10000
+  poolMin: 1,
+  poolMax: 20,
+  poolIncrement: 2,
+  poolTimeout: 300, 
+  queueTimeout: 30000 
 };
 
 let pool: oracledb.Pool | null = null;
@@ -280,56 +287,91 @@ const authorizeAdmin = (req: any, res: any, next: any) => {
 
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, fullName, role, familyId } = req.body;
+  console.log(`Registration attempt for: ${email}, role: ${role}`);
   let connection;
   try {
     const p = await getPool();
     connection = await p.getConnection();
 
-    if (role === 'USER') {
-      if (!familyId) return res.status(400).json({ error: 'Family Estate ID is required to join a household.' });
-      const checkFid: any = await connection.execute(
-        `SELECT COUNT(*) as count FROM users WHERE family_id = :fid`,
-        [familyId]
-      );
-      const count = checkFid.rows[0] ? (checkFid.rows[0][0] || checkFid.rows[0].COUNT) : 0;
-      if (count === 0) return res.status(400).json({ error: 'Invalid Family Estate ID.' });
+    // 1. Check if user already exists
+    const checkUser: any = await connection.execute(
+      `SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER(:email)`,
+      { email }
+    );
+    const userCount = checkUser.rows[0] ? (checkUser.rows[0][0] || checkUser.rows[0].COUNT) : 0;
+    if (userCount > 0) {
+      console.log(`Registration failed: Email ${email} already exists.`);
+      return res.status(400).json({ error: 'An account with this email already exists.' });
     }
 
+    if (role === 'USER') {
+      if (!familyId) return res.status(400).json({ error: 'Family Estate ID is required to join a household.' });
+      console.log(`Checking if family exists: ${familyId}`);
+      const checkFid: any = await connection.execute(
+        `SELECT COUNT(*) as count FROM users WHERE family_id = :fid`,
+        { fid: familyId }
+      );
+      const count = checkFid.rows[0] ? (checkFid.rows[0][0] || checkFid.rows[0].COUNT) : 0;
+      if (count === 0) {
+        console.log(`Registration failed: Invalid family ID ${familyId}`);
+        return res.status(400).json({ error: 'Invalid Family Estate ID. Please check with your administrator.' });
+      }
+    }
+
+    console.log('Hashing password...');
     const hashedPassword = await bcrypt.hash(password, 10);
     const id = Date.now().toString();
     let fId = familyId;
-    if (role === 'ADMIN') fId = await generateUniqueFamilyId(connection);
+    if (role === 'ADMIN') {
+      fId = await generateUniqueFamilyId(connection);
+    }
     
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     
+    console.log(`Inserting user ${id} into database...`);
     await connection.execute(
       `INSERT INTO users (id, email, password_hash, name, role, family_id, is_verified, verification_code) 
        VALUES (:id, :email, :pass, :name, :role, :fid, 0, :vcode)`,
       { id, email, pass: hashedPassword, name: fullName, role, fid: fId, vcode: verificationCode },
       { autoCommit: true }
     );
+    console.log('User inserted successfully.');
 
     try {
       console.log(`Sending verification email to: ${email}`);
       if (process.env.RESEND_API_KEY) {
-        await resendClient.emails.send({
+        // Add a promise wrapper with timeout for email sending
+        const sendEmail = resendClient.emails.send({
           from: `MyAsset Security <${getEmailSender()}>`,
           to: email,
           subject: 'Verify Your MyAsset Account',
-          html: `<div style="font-family: sans-serif; padding: 20px;">
+          html: `<div style="font-family: sans-serif; padding: 20px; background-color: #f9f9f9; border-radius: 10px;">
                   <h2 style="color: #6200ee;">Welcome, ${fullName}!</h2>
-                  <p>Your verification code is:</p>
-                  <h1 style="font-size: 3em; letter-spacing: 10px; color: #6200ee;">${verificationCode}</h1>
+                  <p style="font-size: 16px;">Thank you for joining MyAsset. Please use the following code to verify your account:</p>
+                  <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ddd;">
+                    <h1 style="font-size: 3em; letter-spacing: 10px; color: #6200ee; margin: 0;">${verificationCode}</h1>
+                  </div>
+                  <p style="color: #666; font-size: 12px; margin-top: 20px;">If you did not request this, please ignore this email.</p>
                 </div>`
         });
-        console.log('Email sent successfully');
-      }
-    } catch (e) { console.error('Email failed:', e); }
 
-    res.json({ success: true, message: 'Verification code sent.' });
-  } catch (err) {
-    console.error('API Error:', err);
-    res.status(500).json({ error: 'Operation failed.' });
+        // Race against a 10s timeout
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Email service timeout')), 10000));
+        await Promise.race([sendEmail, timeout]);
+        
+        console.log('Email sent successfully');
+      } else {
+        console.warn('RESEND_API_KEY is missing. Skipping email sending.');
+      }
+    } catch (e: any) { 
+      console.error('Non-blocking Email error during registration:', e.message); 
+      // We don't fail registration if email fails, but we should inform the user
+    }
+
+    res.json({ success: true, message: `Verification code sent to ${email}.` });
+  } catch (err: any) {
+    console.error('CRITICAL Registration Error:', err);
+    res.status(500).json({ error: 'Registration failed due to a server error.', details: err.message });
   } finally {
     if (connection) await connection.close();
   }
@@ -379,9 +421,11 @@ app.post('/api/auth/login', async (req, res) => {
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const user = result.rows[0];
-    if (user && user.PASSWORD_HASH) {
+    if (user) {
       if (user.IS_VERIFIED === 0) return res.status(403).json({ error: 'Verify email first.', needsVerification: true, email: user.EMAIL });
-      if (await bcrypt.compare(password, user.PASSWORD_HASH)) {
+      
+      const isMatch = user.PASSWORD_HASH ? await bcrypt.compare(password, user.PASSWORD_HASH) : false;
+      if (isMatch) {
         const token = jwt.sign({ userId: user.ID, email: user.EMAIL, role: user.ROLE, familyId: user.FAMILY_ID }, JWT_SECRET, { expiresIn: '24h' });
         res.cookie('token', token, { httpOnly: true, secure: NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
         return res.json({ user: { id: user.ID, email: user.EMAIL, fullName: user.NAME, role: user.ROLE, familyId: user.FAMILY_ID } });
@@ -440,6 +484,7 @@ app.put('/api/auth/profile', authenticateToken, async (req: any, res) => {
       { name: fullName, photo: { val: photoUrl || '', type: oracledb.DB_TYPE_CLOB }, id: req.user.userId },
       { autoCommit: true }
     );
+    await createNotification(req.user.userId, req.user.familyId, 'PROFILE_UPDATE', `Updated profile for ${fullName}`);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Update failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -490,7 +535,6 @@ app.post('/api/auth/confirm-reset', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
 });
 
-// Assets Endpoints
 app.get('/api/assets/land', authenticateToken, async (req: any, res) => {
   let connection;
   try {
@@ -508,13 +552,104 @@ app.post('/api/assets/land', authenticateToken, authorizeAdmin, async (req: any,
     connection = await p.getConnection();
     const asset = req.body;
     const id = Date.now().toString();
+    console.log(`Adding land asset for family: ${req.user.familyId}. Data:`, JSON.stringify(asset));
     await connection.execute(
       `INSERT INTO land_assets (id, upi, title, address, zoning, master_plan, size_ha, purchase_date, expiry_date, status, valuation, lat, lng, family_id)
        VALUES (:id, :upi, :title, :address, :zoning, :master_plan, :sz, :pd, :ed, :status, :val, :lat, :lng, :fid)`,
       { id, upi: asset.upi, title: asset.title, address: asset.address, zoning: asset.zoning, master_plan: asset.masterPlan, sz: asset.size, pd: asset.purchaseDate, ed: asset.expiryDate, status: asset.status, val: asset.valuation, lat: asset.location.lat, lng: asset.location.lng, fid: req.user.familyId || '' },
       { autoCommit: true }
     );
+    console.log(`Land asset ${id} created successfully.`);
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_CREATED', `Added new Land Asset: ${asset.title}`);
     res.json({ id, ...asset });
+  } catch (err: any) { 
+    console.error('Asset creation failed:', err);
+    res.status(500).json({ error: 'Failed to create asset.', details: err.message }); 
+  } finally { 
+    if (connection) await connection.close(); 
+  }
+});
+
+app.put('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const asset = req.body;
+    await connection.execute(
+      `UPDATE land_assets SET upi = :upi, title = :title, address = :address, zoning = :zoning, master_plan = :mp, size_ha = :sz, purchase_date = :pd, expiry_date = :ed, status = :status, valuation = :val, lat = :lat, lng = :lng WHERE id = :id AND family_id = :fid`,
+      { id: req.params.id, upi: asset.upi, title: asset.title, address: asset.address, zoning: asset.zoning, mp: asset.masterPlan, sz: asset.size, pd: asset.purchaseDate, ed: asset.expiryDate, status: asset.status, val: asset.valuation, lat: asset.location.lat, lng: asset.location.lng, fid: req.user.familyId || '' },
+      { autoCommit: true }
+    );
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_UPDATED', `Updated Land Asset: ${asset.title}`);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.delete('/api/assets/land/:id', authenticateToken, authorizeAdmin, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    await connection.execute(`DELETE FROM land_assets WHERE id = :id AND family_id = :fid`, { id: req.params.id, fid: req.user.familyId || '' }, { autoCommit: true });
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_DELETED', `Deleted Land Asset`);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.get('/api/assets/residential', authenticateToken, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const result = await connection.execute(`SELECT * FROM residential_assets WHERE family_id = :fid`, [req.user.familyId || ''], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: 'Fetch failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.post('/api/assets/residential', authenticateToken, authorizeAdmin, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const asset = req.body;
+    const id = Date.now().toString();
+    await connection.execute(
+      `INSERT INTO residential_assets (id, name, location, status, tenant, lease_start, lease_end, monthly_rent, valuation, appreciation, img_url, family_id, linked_upi)
+       VALUES (:id, :name, :loc, :status, :tenant, :ls, :le, :rent, :val, :app, :img, :fid, :lupi)`,
+      { id, name: asset.name, loc: asset.location, status: asset.status, tenant: asset.tenant, ls: asset.leaseStart, le: asset.leaseEnd, rent: asset.monthlyRent, val: asset.valuation, app: asset.appreciation, img: { val: asset.img || '', type: oracledb.DB_TYPE_CLOB }, fid: req.user.familyId || '', lupi: asset.linkedUPI || '' },
+      { autoCommit: true }
+    );
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_CREATED', `Added Property: ${asset.name}`);
+    res.json({ id, ...asset });
+  } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.get('/api/assets/vehicles', authenticateToken, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const result = await connection.execute(`SELECT * FROM vehicles WHERE family_id = :fid`, [req.user.familyId || ''], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: 'Fetch failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.post('/api/assets/vehicles', authenticateToken, authorizeAdmin, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    const v = req.body;
+    const id = Date.now().toString();
+    await connection.execute(
+      `INSERT INTO vehicles (id, model, reg, insurance_expiry, status, owner, location, last_service, img_url, family_id)
+       VALUES (:id, :model, :reg, :ie, :status, :owner, :loc, :ls, :img, :fid)`,
+      { id, model: v.model, reg: v.reg, ie: v.insuranceExpiry, status: v.status, owner: v.owner, loc: v.location, ls: v.lastService, img: { val: v.img || '', type: oracledb.DB_TYPE_CLOB }, fid: req.user.familyId || '' },
+      { autoCommit: true }
+    );
+    await createNotification(req.user.userId, req.user.familyId, 'ASSET_CREATED', `Registered Vehicle: ${v.model}`);
+    res.json({ id, ...v });
   } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
 });
 
@@ -546,6 +681,7 @@ app.post('/api/family/members', authenticateToken, authorizeAdmin, async (req: a
       [id, email, hash, fullName, role, req.user.familyId],
       { autoCommit: true }
     );
+    await createNotification(req.user.userId, req.user.familyId, 'USER_ADDED', `Added Member: ${fullName}`);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
 });
@@ -562,6 +698,16 @@ app.get('/api/notifications', authenticateToken, async (req: any, res) => {
     );
     res.json(result.rows);
   } catch (err) { res.status(500).json({ error: 'Fetch failed.' }); } finally { if (connection) await connection.close(); }
+});
+
+app.post('/api/notifications/read', authenticateToken, async (req: any, res) => {
+  let connection;
+  try {
+    const p = await getPool();
+    connection = await p.getConnection();
+    await connection.execute(`UPDATE notifications SET is_read = 1 WHERE family_id = :fid`, [req.user.familyId || ''], { autoCommit: true });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed.' }); } finally { if (connection) await connection.close(); }
 });
 
 export default app;
